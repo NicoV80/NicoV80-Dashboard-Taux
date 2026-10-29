@@ -1,0 +1,1951 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Courbes des taux · swaps, OAT, Bund, Treasuries</title>
+<meta name="description" content="Simulateur de courbes des taux : swaps EUR et USD, OAT, Bund, Treasuries, taux bancaires sur 12 mois, simulation d'emprunt.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Carlito:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f4f1ea}
+#app{overflow-x:clip}
+a{color:#b05a2e;text-decoration:none}a:hover{color:#8a4422;text-decoration:underline;text-underline-offset:2px}
+button{cursor:pointer}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid #b05a2e;outline-offset:2px}
+input[type=range]{accent-color:#062f59}
+noscript{display:block;padding:40px;font-family:Arial,Helvetica,sans-serif;color:#062f59}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<noscript>Cette page nécessite JavaScript.</noscript>
+<template id="tpl">
+<div style="min-height: 100vh; background: #f4f1ea; color: #4a5668; font-family: Calibri, Carlito, 'Segoe UI', sans-serif; font-size: 15px; line-height: 1.55; padding: 32px 20px 48px; box-sizing: border-box">
+<div style="max-width: 1120px; margin: 0 auto; background: #fbf9f5; border: 1px solid #e4ded3">
+
+<header style="background: #062f59; color: #ffffff; padding: 0 40px; display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap">
+<div style="display: flex; align-items: center; gap: 26px; flex-wrap: wrap">
+<div style="font-family: Arial, Helvetica, sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 0.32em; white-space: nowrap; padding: 16px 0">COURBES DES TAUX</div>
+<div role="tablist" aria-label="Sections" style="display: flex; flex-wrap: wrap">
+<sc-for list="{{tabs}}" as="tb" hint-placeholder-count="5">
+<button type="button" role="tab" aria-selected="{{tb.on}}" onClick="{{tb.pick}}" style="min-height: 48px; border: 0; background: {{tb.bg}}; color: {{tb.fg}}; font-family: Arial, Helvetica, sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; padding: 17px 14px">{{tb.label}}</button>
+</sc-for>
+</div>
+</div>
+<div style="display: flex; align-items: center; gap: 18px; flex-wrap: wrap"><div style="font-family: Arial, Helvetica, sans-serif; font-size: 10.5px; letter-spacing: 0.18em; color: #9db6d2; white-space: nowrap; padding: 16px 0">{{asOfLabel}}</div><a href="https://nickel.siftlab.net/" style="font-family: Arial, Helvetica, sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: #ffffff; white-space: nowrap; padding: 16px 0; text-decoration: none">Nickel ↗</a></div>
+</header>
+
+<sc-if value="{{isSim}}" hint-placeholder-val="{{ true }}">
+<div role="tabpanel" aria-label="Simulateur">
+<div style="padding: 36px 40px 28px; border-bottom: 1px solid #e4ded3">
+<div style="font-family: Arial, Helvetica, sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: #b05a2e; margin-bottom: 12px">Simulateur de courbes</div>
+<h1 style="margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 34px; font-weight: 400; letter-spacing: -0.02em; color: #062f59; line-height: 1.15">Swaps, OAT, Bund et Treasuries sur une même échelle</h1>
+<p style="margin: 10px 0 0; max-width: 80ch">Choisissez une date, superposez une référence, puis appliquez un choc de taux. Les points pleins sont observés ; les points creux et les segments pointillés sont estimés.</p>
+<div style="font-family: Arial, Helvetica, sans-serif; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #66707f; margin-top: 18px">Fins de mois oct. 2025 → sept. 2026 · dernier point 23.10.2026 · Treasuries 26.10.2026</div>
+</div>
+
+<section aria-label="Paramètres d'affichage" style="padding: 22px 40px 24px; border-bottom: 1px solid #e4ded3; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px">
+<span style="width: 96px; font-family: Arial, Helvetica, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: #062f59">Date</span>
+<button type="button" onClick="{{togglePlay}}" style="min-height: 44px; padding: 8px 16px; border: 1px solid #b05a2e; background: #b05a2e; color: #ffffff; font-family: Arial, Helvetica, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase">{{playText}}</button>
+<div style="display: inline-flex; flex-wrap: wrap; gap: 1px; background: #e4ded3; border: 1px solid #e4ded3; max-width: 100%">
+<sc-for list="{{months}}" as="m" hint-placeholder-count="13">
+<button type="button" onClick="{{m.pick}}" aria-pressed="{{m.on}}" style="min-height: 44px; padding: 8px 11px; border: 0; background: {{m.bg}}; color: {{m.fg}}; font-family: Arial, Helvetica, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase">{{m.label}}</button>
+</sc-for>
+</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px">
+<span style="width: 96px; font-family: Arial, Helvetica, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: #062f59">Courbes</span>
+<div style="display: inline-flex; flex-wrap: wrap; gap: 1px; background: #e4ded3; border: 1px solid #e4ded3; max-width: 100%">
+<sc-for list="{{serBtns}}" as="s" hint-placeholder-count="5">
+<button type="button" onClick="{{s.toggle}}" aria-pressed="{{s.on}}" style="min-height: 44px; padding: 8px 14px; border: 0; background: {{s.bg}}; color: #062f59; font-family: Arial, Helvetica, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; display: inline-flex; align-items: center; gap: 8px; opacity: {{s.op}}"><svg width="18" height="6" viewBox="0 0 18 6" aria-hidden="true"><path d="M1 3 H17" style="stroke: {{s.color}}; stroke-width: 3"></path></svg>{{s.name}}</button>
+</sc-for>
+</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px">
+<span style="width: 96px; font-family: Arial, Helvetica, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: #062f59">Comparer à</span>
+<div style="display: inline-flex; flex-wrap: wrap; gap: 1px; background: #e4ded3; border: 1px solid #e4ded3; max-width: 100%">
+<sc-for list="{{cmpBtns}}" as="c" hint-placeholder-count="3">
+<button type="button" onClick="{{c.pick}}" aria-pressed="{{c.on}}" style="min-height: 44px; padding: 8px 14px; border: 0; background: {{c.bg}}; color: {{c.fg}}; font-family: Arial, Helvetica, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase">{{c.label}}</button>
+</sc-for>
+</div>
+</div>
+</section>
+
+<div style="display: flex; flex-wrap: wrap; border-bottom: 1px solid #e4ded3">
+<section aria-label="Graphique des courbes" style="flex: 999 1 600px; min-width: 0; padding: 28px 32px 30px 40px; border-right: 1px solid #e4ded3; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap">
+<h2 style="margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: #062f59">Courbes au {{dateLong}}</h2>
+<span style="font-family: Arial, Helvetica, sans-serif; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #66707f">% · maturités en racine carrée</span>
+</div>
+<div style="display: flex; gap: 6px 18px; flex-wrap: wrap; font-family: Arial, Helvetica, sans-serif; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: #66707f">
+<span>Plein : date affichée</span>
+<span>Pâle : {{ghostLegend}}</span>
+<span>Pointillé fin : estimé</span>
+<span>Tirets : choc</span>
+<span>Losanges : €STR, EFFR</span>
+</div>
+<div role="img" aria-label="{{chartAria}}" onMouseMove="{{onMove}}" onMouseLeave="{{onLeave}}" style="position: relative; width: 100%; aspect-ratio: 1000 / 520">
+<svg viewBox="0 0 1000 520" preserveAspectRatio="none" aria-hidden="true" style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible">
+<path d="{{g.vgrid}}" style="fill: none; stroke: #f0ece4; stroke-width: 1; vector-effect: non-scaling-stroke"></path>
+<path d="{{g.grid}}" style="fill: none; stroke: #e4ded3; stroke-width: 1; vector-effect: non-scaling-stroke"></path>
+<path d="{{g.axis}}" style="fill: none; stroke: #cfc8bb; stroke-width: 1; vector-effect: non-scaling-stroke"></path>
+<path d="{{g.cross}}" style="fill: none; stroke: #062f59; stroke-width: 1; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke"></path>
+<path d="{{p.bund.ghost}}" style="fill: none; stroke: #062f59; stroke-width: 2; opacity: 0.25; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke"></path>
+<path d="{{p.sweur.ghost}}" style="fill: none; stroke: #9db6d2; stroke-width: 2; opacity: 0.45; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke"></path>
+<path d="{{p.oat.ghost}}" style="fill: none; stroke: #b05a2e; stroke-width: 2; opacity: 0.3; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke"></path>
+<path d="{{p.ust.ghost}}" style="fill: none; stroke: #4a5668; stroke-width: 2; opacity: 0.3; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke"></path>
+<path d="{{p.swusd.ghost}}" style="fill: none; stroke: #e9a47c; stroke-width: 2; opacity: 0.45; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke"></path>
+<path d="{{p.bund.obs}}" style="fill: none; stroke: #062f59; stroke-width: 2.25; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke"></path>
+<path d="{{p.sweur.obs}}" style="fill: none; stroke: #9db6d2; stroke-width: 2.75; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke"></path>
+<path d="{{p.oat.obs}}" style="fill: none; stroke: #b05a2e; stroke-width: 2.25; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke"></path>
+<path d="{{p.ust.obs}}" style="fill: none; stroke: #4a5668; stroke-width: 2.25; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke"></path>
+<path d="{{p.swusd.obs}}" style="fill: none; stroke: #e9a47c; stroke-width: 2.75; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke"></path>
+<path d="{{p.sweur.est}}" style="fill: none; stroke: #9db6d2; stroke-width: 2.75; stroke-dasharray: 1 5; stroke-linecap: round; vector-effect: non-scaling-stroke"></path>
+<path d="{{p.swusd.est}}" style="fill: none; stroke: #e9a47c; stroke-width: 2.75; stroke-dasharray: 1 5; stroke-linecap: round; vector-effect: non-scaling-stroke"></path>
+<path d="{{p.bund.shock}}" style="fill: none; stroke: #062f59; stroke-width: 2; stroke-dasharray: 8 5; vector-effect: non-scaling-stroke"></path>
+<path d="{{p.sweur.shock}}" style="fill: none; stroke: #7f9bbd; stroke-width: 2; stroke-dasharray: 8 5; vector-effect: non-scaling-stroke"></path>
+<path d="{{p.oat.shock}}" style="fill: none; stroke: #b05a2e; stroke-width: 2; stroke-dasharray: 8 5; vector-effect: non-scaling-stroke"></path>
+<path d="{{p.ust.shock}}" style="fill: none; stroke: #4a5668; stroke-width: 2; stroke-dasharray: 8 5; vector-effect: non-scaling-stroke"></path>
+<path d="{{p.swusd.shock}}" style="fill: none; stroke: #d98a5c; stroke-width: 2; stroke-dasharray: 8 5; vector-effect: non-scaling-stroke"></path>
+<path d="{{p.bund.mo}}" style="fill: #062f59; stroke: #fbf9f5; stroke-width: 1.5"></path>
+<path d="{{p.sweur.mo}}" style="fill: #9db6d2; stroke: #fbf9f5; stroke-width: 1.5"></path>
+<path d="{{p.oat.mo}}" style="fill: #b05a2e; stroke: #fbf9f5; stroke-width: 1.5"></path>
+<path d="{{p.ust.mo}}" style="fill: #4a5668; stroke: #fbf9f5; stroke-width: 1.5"></path>
+<path d="{{p.swusd.mo}}" style="fill: #e9a47c; stroke: #fbf9f5; stroke-width: 1.5"></path>
+<path d="{{p.sweur.me}}" style="fill: #fbf9f5; stroke: #7f9bbd; stroke-width: 2"></path>
+<path d="{{p.swusd.me}}" style="fill: #fbf9f5; stroke: #d98a5c; stroke-width: 2"></path>
+<path d="{{g.anch}}" style="fill: #062f59; stroke: #fbf9f5; stroke-width: 1.5"></path>
+<path d="{{g.anchShock}}" style="fill: none; stroke: #062f59; stroke-width: 1.5"></path>
+</svg>
+<sc-for list="{{yTicks}}" as="t" hint-placeholder-count="10">
+<div style="position: absolute; left: 0; width: 6.2%; top: {{t.top}}; transform: translateY(-50%); text-align: right; font-family: Arial, Helvetica, sans-serif; font-size: 10px; color: #66707f">{{t.txt}}</div>
+</sc-for>
+<sc-for list="{{xTicks}}" as="t" hint-placeholder-count="8">
+<div style="position: absolute; top: 92.5%; left: {{t.left}}; transform: translateX(-50%); font-family: Arial, Helvetica, sans-serif; font-size: 10px; color: #66707f">{{t.txt}}</div>
+</sc-for>
+<sc-for list="{{anchLabels}}" as="a" hint-placeholder-count="2">
+<div style="position: absolute; left: 8.4%; top: {{a.top}}; transform: translateY(-50%); font-family: Arial, Helvetica, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.06em; color: #062f59; background: rgba(251,249,245,0.9); padding: 0 3px; white-space: nowrap">{{a.txt}}</div>
+</sc-for>
+<sc-for list="{{endLabels}}" as="l" hint-placeholder-count="5">
+<div style="position: absolute; left: 87.4%; top: {{l.top}}; transform: translateY(-50%); display: flex; align-items: center; gap: 6px; font-family: Arial, Helvetica, sans-serif; font-size: 11px; font-weight: 700; color: #062f59; white-space: nowrap"><span style="width: 14px; height: 3px; background: {{l.color}}"></span>{{l.txt}}</div>
+</sc-for>
+<sc-if value="{{tip.show}}" hint-placeholder-val="{{ false }}">
+<div style="position: absolute; top: 2%; left: {{tip.left}}; right: {{tip.right}}; min-width: 220px; background: #062f59; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; pointer-events: none; font-size: 13px; color: #ffffff">
+<div style="font-family: Arial, Helvetica, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #9db6d2">{{tip.title}}</div>
+<sc-for list="{{tip.rows}}" as="r" hint-placeholder-count="5">
+<div style="display: flex; align-items: center; gap: 10px; justify-content: space-between">
+<span style="display: inline-flex; align-items: center; gap: 6px; color: #dfe7f0"><span style="width: 14px; height: 3px; background: {{r.color}}"></span>{{r.name}}</span>
+<span style="font-family: Arial, Helvetica, sans-serif; font-weight: 700; color: #ffffff; font-variant-numeric: tabular-nums">{{r.val}}<span style="font-weight: 400; color: #e9a47c"> {{r.extra}}</span></span>
+</div>
+</sc-for>
+</div>
+</sc-if>
+</div>
+<sc-if value="{{isLast}}" hint-placeholder-val="{{ true }}">
+<p style="margin: 0; font-size: 13px; color: #66707f">Treasuries au 26 oct. 2026 : écart de 2 pb au plus avec le 23 oct. sur 2, 5, 10 et 30 ans.</p>
+</sc-if>
+</section>
+
+<aside aria-label="Indicateurs" style="flex: 1 1 300px; min-width: 0; padding: 28px 40px 30px 28px; box-sizing: border-box; display: flex; flex-direction: column; gap: 22px">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<h2 style="margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: #062f59">Indicateurs</h2>
+<span style="font-size: 13px; color: #66707f">Au {{dateLong}}, écarts {{refPhrase}}</span>
+</div>
+<sc-for list="{{kpiGroups}}" as="kg" hint-placeholder-count="3">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<h3 style="margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 9.5px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: #b05a2e">{{kg.title}}</h3>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: #e4ded3; border: 1px solid #e4ded3">
+<sc-for list="{{kg.items}}" as="k" hint-placeholder-count="4">
+<div style="background: #fbf9f5; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; min-width: 0">
+<span style="font-family: Arial, Helvetica, sans-serif; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: #66707f; line-height: 1.4">{{k.label}}</span>
+<span style="font-family: Arial, Helvetica, sans-serif; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; color: #062f59; margin-top: 4px; font-variant-numeric: tabular-nums">{{k.val}}</span>
+<span style="font-size: 12.5px; color: #66707f; line-height: 1.35">{{k.delta}}</span>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-for>
+<div style="display: flex; flex-direction: column; gap: 14px">
+<h3 style="margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 9.5px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: #b05a2e">Régime de déformation {{refPhrase}}</h3>
+<sc-for list="{{regimes}}" as="r" hint-placeholder-count="5">
+<div style="border-left: 2px solid {{r.color}}; padding-left: 14px; display: flex; flex-direction: column; gap: 2px">
+<span style="font-family: Arial, Helvetica, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #b05a2e">{{r.name}} · {{r.label}}</span>
+<span style="font-family: Arial, Helvetica, sans-serif; font-size: 13px; font-weight: 700; color: #062f59; font-variant-numeric: tabular-nums">2A {{r.d2}} · 10A {{r.d10}} · 30A {{r.d30}}</span>
+<span style="font-size: 13px; color: #4a5668; line-height: 1.4">{{r.text}}</span>
+</div>
+</sc-for>
+</div>
+</aside>
+</div>
+
+<section aria-label="Valeurs à la date affichée" style="padding: 28px 40px 32px; border-bottom: 1px solid #e4ded3; overflow-x: auto">
+<div style="display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap; margin-bottom: 14px">
+<h2 style="margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: #062f59">Valeurs au {{dateLong}}</h2>
+<span style="font-family: Arial, Helvetica, sans-serif; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #66707f">% · italique : estimé</span>
+</div>
+<div role="table" aria-label="Valeurs à la date affichée" style="min-width: 820px; display: flex; flex-direction: column; font-size: 14px; font-variant-numeric: tabular-nums">
+<div role="row" style="display: grid; grid-template-columns: minmax(170px, 1.8fr) repeat(11, minmax(0, 1fr)); border-bottom: 1px solid #062f59">
+<div role="columnheader" style="padding: 9px 8px 9px 0; font-family: Arial, Helvetica, sans-serif; font-weight: 700; font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase; color: #66707f">Courbe</div>
+<sc-for list="{{tenorHeads}}" as="h" hint-placeholder-count="11">
+<div role="columnheader" style="padding: 9px 8px; font-family: Arial, Helvetica, sans-serif; font-weight: 700; font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase; color: #66707f; text-align: right">{{h}}</div>
+</sc-for>
+</div>
+<sc-for list="{{tbl}}" as="r" hint-placeholder-count="5">
+<div role="row" style="display: grid; grid-template-columns: minmax(170px, 1.8fr) repeat(11, minmax(0, 1fr)); border-bottom: 1px solid #ece7dd">
+<div role="rowheader" style="padding: 9px 8px 9px 0; display: flex; align-items: center; gap: 8px; color: #062f59"><span style="width: 14px; height: 3px; background: {{r.color}}"></span>{{r.name}}</div>
+<sc-for list="{{r.cells}}" as="c" hint-placeholder-count="11">
+<div role="cell" style="padding: 9px 8px; text-align: right; color: {{c.col}}; font-style: {{c.fs}}">{{c.txt}}</div>
+</sc-for>
+</div>
+</sc-for>
+</div>
+<p style="margin: 12px 0 0; font-size: 13px; color: #66707f; max-width: 90ch">Colonne JJ : €STR pour la ligne Swap EUR, Fed funds effectif (EFFR) pour les Treasuries, SOFR pour le Swap USD. Entre 3 mois et 1 an, la ligne Swap EUR reprend l'Euribor du même terme.</p>
+</section>
+
+<section aria-label="Simulateur de chocs" style="display: flex; flex-wrap: wrap; border-bottom: 1px solid #e4ded3">
+<div style="flex: 1 1 340px; min-width: 0; padding: 28px 28px 32px 40px; border-right: 1px solid #e4ded3; box-sizing: border-box; display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<h2 style="margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: #062f59">Simulateur de chocs</h2>
+<span style="font-size: 14px; color: #66707f">Les chocs s'appliquent à la date affichée. Scénarios prédéfinis : hypothèses de travail illustratives, pas des prévisions.</span>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px">
+<span style="font-family: Arial, Helvetica, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: #062f59">Zone</span>
+<div style="display: inline-flex; flex-wrap: wrap; gap: 1px; background: #e4ded3; border: 1px solid #e4ded3">
+<sc-for list="{{zoneBtns}}" as="z" hint-placeholder-count="3">
+<button type="button" onClick="{{z.pick}}" aria-pressed="{{z.on}}" style="min-height: 44px; padding: 8px 14px; border: 0; background: {{z.bg}}; color: {{z.fg}}; font-family: Arial, Helvetica, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase">{{z.label}}</button>
+</sc-for>
+</div>
+</div>
+<sc-for list="{{levers}}" as="lv" hint-placeholder-count="5">
+<div style="display: flex; flex-direction: column; gap: 2px">
+<div style="display: flex; justify-content: space-between; gap: 8px; align-items: baseline">
+<label for="{{lv.id}}" style="font-size: 14px; color: #062f59">{{lv.label}}</label>
+<span style="font-family: Arial, Helvetica, sans-serif; font-size: 13px; font-weight: 700; color: #062f59; font-variant-numeric: tabular-nums">{{lv.txt}}</span>
+</div>
+<input id="{{lv.id}}" type="range" min="{{lv.min}}" max="{{lv.max}}" step="5" value="{{lv.value}}" onChange="{{lv.onChange}}" style="width: 100%; min-height: 32px; margin: 0">
+<span style="font-size: 12.5px; color: #66707f">{{lv.help}}</span>
+</div>
+</sc-for>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-family: Arial, Helvetica, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: #062f59">Scénarios illustratifs</span>
+<div style="display: flex; flex-wrap: wrap; gap: 1px; background: #e4ded3; border: 1px solid #e4ded3">
+<sc-for list="{{presets}}" as="ps" hint-placeholder-count="5">
+<button type="button" onClick="{{ps.pick}}" title="{{ps.desc}}" style="flex: 1 1 auto; min-height: 44px; padding: 8px 12px; border: 0; background: #fbf9f5; color: #062f59; font-family: Arial, Helvetica, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase">{{ps.label}}</button>
+</sc-for>
+</div>
+<span style="font-size: 13px; color: #4a5668; border-left: 2px solid #b05a2e; padding-left: 12px">{{presetNote}}</span>
+</div>
+</div>
+
+<div style="flex: 999 1 520px; min-width: 0; padding: 28px 40px 32px 28px; box-sizing: border-box; display: flex; flex-direction: column; gap: 18px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<h2 style="margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: #062f59">Impact au {{dateLong}}</h2>
+<span style="font-size: 14px; color: #66707f">{{shockSummary}}</span>
+</div>
+<div style="overflow-x: auto">
+<div role="table" aria-label="Impact du choc par maturité" style="min-width: 520px; display: flex; flex-direction: column; font-size: 14px; font-variant-numeric: tabular-nums">
+<div role="row" style="display: grid; grid-template-columns: minmax(130px, 1.3fr) repeat(4, minmax(0, 1fr)); border-bottom: 1px solid #062f59">
+<div role="columnheader" style="padding: 9px 8px 9px 0; font-family: Arial, Helvetica, sans-serif; font-weight: 700; font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase; color: #66707f">Courbe</div>
+<div role="columnheader" style="padding: 9px 8px; font-family: Arial, Helvetica, sans-serif; font-weight: 700; font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase; color: #66707f; text-align: right">2 ans</div>
+<div role="columnheader" style="padding: 9px 8px; font-family: Arial, Helvetica, sans-serif; font-weight: 700; font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase; color: #66707f; text-align: right">5 ans</div>
+<div role="columnheader" style="padding: 9px 8px; font-family: Arial, Helvetica, sans-serif; font-weight: 700; font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase; color: #66707f; text-align: right">10 ans</div>
+<div role="columnheader" style="padding: 9px 0 9px 8px; font-family: Arial, Helvetica, sans-serif; font-weight: 700; font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase; color: #66707f; text-align: right">30 ans</div>
+</div>
+<sc-for list="{{impact}}" as="r" hint-placeholder-count="5">
+<div role="row" style="display: grid; grid-template-columns: minmax(130px, 1.3fr) repeat(4, minmax(0, 1fr)); border-bottom: 1px solid #ece7dd">
+<div role="rowheader" style="padding: 9px 8px 9px 0; display: flex; align-items: center; gap: 8px; color: #062f59"><span style="width: 14px; height: 3px; background: {{r.color}}"></span>{{r.name}}</div>
+<sc-for list="{{r.cells}}" as="c" hint-placeholder-count="4">
+<div role="cell" style="padding: 9px 8px; text-align: right; display: flex; flex-direction: column">
+<span style="color: #4a5668">{{c.a}}</span>
+<span style="font-family: Arial, Helvetica, sans-serif; font-size: 12px; font-weight: 700; color: #b05a2e">{{c.b}}</span>
+</div>
+</sc-for>
+</div>
+</sc-for>
+</div>
+</div>
+
+<div style="background: #f4f1ea; border: 1px solid #e4ded3; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<h3 style="margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: #062f59">Coût d'un financement bancaire (EUR ou XPF)</h3>
+<span style="font-size: 13px; color: #66707f">Fixe 5 ans = swap EUR 5 ans + marge ; variable = Euribor 3 mois + marge. 1 EUR = 119,33174 XPF. Simulation détaillée dans l'onglet Emprunt.</span>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: flex-end">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 14px; color: #062f59">Nominal</span>
+<div style="display: inline-flex; flex-wrap: wrap; gap: 1px; background: #e4ded3; border: 1px solid #e4ded3">
+<sc-for list="{{nomBtns}}" as="n" hint-placeholder-count="4">
+<button type="button" onClick="{{n.pick}}" aria-pressed="{{n.on}}" style="min-height: 44px; padding: 8px 12px; border: 0; background: {{n.bg}}; color: {{n.fg}}; font-family: Arial, Helvetica, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase">{{n.label}}</button>
+</sc-for>
+</div>
+</div>
+<div style="flex: 1 1 220px; display: flex; flex-direction: column; gap: 2px">
+<div style="display: flex; justify-content: space-between; gap: 8px">
+<label for="marge-range" style="font-size: 14px; color: #062f59">Marge bancaire</label>
+<span style="font-family: Arial, Helvetica, sans-serif; font-size: 13px; font-weight: 700; color: #062f59">{{fin.margeTxt}}</span>
+</div>
+<input id="marge-range" type="range" min="50" max="300" step="10" value="{{fin.marge}}" onChange="{{fin.onMarge}}" style="width: 100%; min-height: 32px; margin: 0">
+</div>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1px; background: #e4ded3; border: 1px solid #e4ded3">
+<div style="background: #062f59; padding: 14px 16px; display: flex; flex-direction: column; gap: 2px">
+<span style="font-family: Arial, Helvetica, sans-serif; font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase; color: #9db6d2">Fixe 5 ans, tout compris</span>
+<span style="font-family: Arial, Helvetica, sans-serif; font-size: 22px; font-weight: 700; color: #ffffff; margin-top: 6px">{{fin.fix}}</span>
+<span style="font-size: 12.5px; color: #e9a47c">{{fin.fixDetail}}</span>
+</div>
+<div style="background: #fbf9f5; padding: 14px 16px; display: flex; flex-direction: column; gap: 2px">
+<span style="font-family: Arial, Helvetica, sans-serif; font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase; color: #66707f">Variable (Euribor 3M + marge)</span>
+<span style="font-family: Arial, Helvetica, sans-serif; font-size: 22px; font-weight: 700; color: #062f59; margin-top: 6px">{{fin.var}}</span>
+<span style="font-size: 12.5px; color: #66707f">{{fin.varDetail}}</span>
+</div>
+<div style="background: #fbf9f5; padding: 14px 16px; display: flex; flex-direction: column; gap: 2px">
+<span style="font-family: Arial, Helvetica, sans-serif; font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase; color: #66707f">Prime du fixe sur le variable</span>
+<span style="font-family: Arial, Helvetica, sans-serif; font-size: 22px; font-weight: 700; color: #b05a2e; margin-top: 6px">{{fin.prime}}</span>
+<span style="font-size: 12.5px; color: #66707f">Prix de l'assurance contre la hausse intégrée par le marché</span>
+</div>
+</div>
+<p style="margin: 0; font-size: 14px; color: #4a5668">{{fin.sentence}}</p>
+<p style="margin: 0; font-size: 12.5px; color: #66707f">Repère, inférence non vérifiée : l'IEOM relève 4,36 % au T2 2026 sur les crédits d'équipement calédoniens (3,57 % en métropole). Rapporté au swap 5 ans estimé de fin juin (2,76 %), cela suggère une marge d'environ 160 pb, à affiner selon maturités et part de variable.</p>
+</div>
+</div>
+</section>
+</div>
+</sc-if>
+
+<sc-if value="{{isLoan}}" hint-placeholder-val="{{ false }}">
+<div role="tabpanel" aria-label="Simulation d'emprunt">
+<div style="padding: 36px 40px 28px; border-bottom: 1px solid #e4ded3">
+<div style="font-family: Arial, Helvetica, sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: #b05a2e; margin-bottom: 12px">Simulation d'emprunt</div>
+<h1 style="margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 34px; font-weight: 400; letter-spacing: -0.02em; color: #062f59; line-height: 1.15">Coût d'un financement bancaire, à taux fixe ou variable</h1>
+<p style="margin: 10px 0 0; max-width: 80ch">Taux fixe = swap EUR à la durée de vie moyenne du prêt + marge. Taux variable = Euribor + marge, projeté sur les taux à terme implicites de la courbe.</p>
+<div style="font-family: Arial, Helvetica, sans-serif; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #66707f; margin-top: 18px">Conditions de marché au {{loan.dateLong}}</div>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1px; background: #e4ded3; border-bottom: 1px solid #e4ded3">
+<sc-for list="{{loan.kpis}}" as="k" hint-placeholder-count="6">
+<div style="background: {{k.bg}}; padding: 20px 24px; min-width: 0; display: flex; flex-direction: column">
+<span style="font-family: Arial, Helvetica, sans-serif; font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: {{k.labC}}; line-height: 1.5">{{k.label}}</span>
+<span style="font-family: Arial, Helvetica, sans-serif; font-size: 28px; font-weight: 700; letter-spacing: -0.02em; color: {{k.valC}}; margin-top: 8px; line-height: 1.1; font-variant-numeric: tabular-nums">{{k.val}}</span>
+<span style="font-size: 13px; margin-top: 6px; color: {{k.detC}}; line-height: 1.4">{{k.detail}}</span>
+</div>
+</sc-for>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; border-bottom: 1px solid #e4ded3">
+<section aria-label="Hypothèses de l'emprunt" style="flex: 1 1 300px; min-width: 0; padding: 28px 28px 32px 40px; border-right: 1px solid #e4ded3; box-sizing: border-box; display: flex; flex-direction: column; gap: 18px">
+<h2 style="margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: #062f59">Hypothèses</h2>
+<div style="display: flex; flex-direction: column; gap: 2px">
+<div style="display: flex; justify-content: space-between; gap: 8px; align-items: baseline">
+<label for="loan-date" style="font-size: 14px; color: #062f59">Conditions de marché</label>
+<span style="font-family: Arial, Helvetica, sans-serif; font-size: 13px; font-weight: 700; color: #062f59">{{loan.date.txt}}</span>
+</div>
+<input id="loan-date" type="range" min="0" max="12" step="1" value="{{loan.date.value}}" onChange="{{loan.date.onChange}}" style="width: 100%; min-height: 32px; margin: 0">
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px">
+<span style="font-size: 14px; color: #062f59; width: 64px">Devise</span>
+<div style="display: inline-flex; gap: 1px; background: #e4ded3; border: 1px solid #e4ded3">
+<sc-for list="{{loan.curBtns}}" as="c" hint-placeholder-count="2">
+<button type="button" onClick="{{c.pick}}" aria-pressed="{{c.on}}" style="min-height: 44px; padding: 8px 16px; border: 0; background: {{c.bg}}; color: {{c.fg}}; font-family: Arial, Helvetica, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase">{{c.label}}</button>
+</sc-for>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 2px">
+<div style="display: flex; justify-content: space-between; gap: 8px; align-items: baseline">
+<label for="loan-amt" style="font-size: 14px; color: #062f59">Montant</label>
+<span style="font-family: Arial, Helvetica, sans-serif; font-size: 13px; font-weight: 700; color: #062f59">{{loan.amt.txt}}</span>
+</div>
+<input id="loan-amt" type="range" min="{{loan.amt.min}}" max="{{loan.amt.max}}" step="{{loan.amt.step}}" value="{{loan.amt.value}}" onChange="{{loan.amt.onChange}}" style="width: 100%; min-height: 32px; margin: 0">
+<span style="font-size: 12.5px; color: #66707f">{{loan.amt.help}}</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 2px">
+<div style="display: flex; justify-content: space-between; gap: 8px; align-items: baseline">
+<label for="loan-years" style="font-size: 14px; color: #062f59">Durée</label>
+<span style="font-family: Arial, Helvetica, sans-serif; font-size: 13px; font-weight: 700; color: #062f59">{{loan.years.txt}}</span>
+</div>
+<input id="loan-years" type="range" min="1" max="25" step="1" value="{{loan.years.value}}" onChange="{{loan.years.onChange}}" style="width: 100%; min-height: 32px; margin: 0">
+</div>
+<div style="display: flex; flex-direction: column; gap: 2px">
+<div style="display: flex; justify-content: space-between; gap: 8px; align-items: baseline">
+<label for="loan-marge" style="font-size: 14px; color: #062f59">Marge de crédit</label>
+<span style="font-family: Arial, Helvetica, sans-serif; font-size: 13px; font-weight: 700; color: #062f59">{{loan.marge.txt}}</span>
+</div>
+<input id="loan-marge" type="range" min="25" max="400" step="5" value="{{loan.marge.value}}" onChange="{{loan.marge.onChange}}" style="width: 100%; min-height: 32px; margin: 0">
+<span style="font-size: 12.5px; color: #66707f">Repère indicatif : environ 160 pb sur l'équipement en Nouvelle-Calédonie au T2 2026, environ 80 pb en métropole (inférence).</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 2px">
+<div style="display: flex; justify-content: space-between; gap: 8px; align-items: baseline">
+<label for="loan-fee" style="font-size: 14px; color: #062f59">Commission d'arrangement</label>
+<span style="font-family: Arial, Helvetica, sans-serif; font-size: 13px; font-weight: 700; color: #062f59">{{loan.fee.txt}}</span>
+</div>
+<input id="loan-fee" type="range" min="0" max="200" step="5" value="{{loan.fee.value}}" onChange="{{loan.fee.onChange}}" style="width: 100%; min-height: 32px; margin: 0">
+<span style="font-size: 12.5px; color: #66707f">Payée au décaissement, intégrée au coût actuariel.</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 14px; color: #062f59">Profil de remboursement</span>
+<div style="display: flex; flex-wrap: wrap; gap: 1px; background: #e4ded3; border: 1px solid #e4ded3">
+<sc-for list="{{loan.profBtns}}" as="c" hint-placeholder-count="3">
+<button type="button" onClick="{{c.pick}}" aria-pressed="{{c.on}}" style="flex: 1 1 auto; min-height: 44px; padding: 8px 10px; border: 0; background: {{c.bg}}; color: {{c.fg}}; font-family: Arial, Helvetica, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase">{{c.label}}</button>
+</sc-for>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 14px; color: #062f59">Différé d'amortissement</span>
+<div style="display: flex; flex-wrap: wrap; gap: 1px; background: #e4ded3; border: 1px solid #e4ded3; opacity: {{loan.gOpacity}}">
+<sc-for list="{{loan.gBtns}}" as="c" hint-placeholder-count="4">
+<button type="button" onClick="{{c.pick}}" aria-pressed="{{c.on}}" style="flex: 1 1 auto; min-height: 44px; padding: 8px 10px; border: 0; background: {{c.bg}}; color: {{c.fg}}; font-family: Arial, Helvetica, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase">{{c.label}}</button>
+</sc-for>
+</div>
+<span style="font-size: 12.5px; color: #66707f">{{loan.gNote}}</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 14px; color: #062f59">Périodicité des échéances</span>
+<div style="display: flex; flex-wrap: wrap; gap: 1px; background: #e4ded3; border: 1px solid #e4ded3">
+<sc-for list="{{loan.fBtns}}" as="c" hint-placeholder-count="4">
+<button type="button" onClick="{{c.pick}}" aria-pressed="{{c.on}}" style="flex: 1 1 auto; min-height: 44px; padding: 8px 10px; border: 0; background: {{c.bg}}; color: {{c.fg}}; font-family: Arial, Helvetica, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase">{{c.label}}</button>
+</sc-for>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 14px; color: #062f59">Projection du taux variable</span>
+<div style="display: flex; flex-wrap: wrap; gap: 1px; background: #e4ded3; border: 1px solid #e4ded3">
+<sc-for list="{{loan.pBtns}}" as="c" hint-placeholder-count="2">
+<button type="button" onClick="{{c.pick}}" aria-pressed="{{c.on}}" style="flex: 1 1 auto; min-height: 44px; padding: 8px 10px; border: 0; background: {{c.bg}}; color: {{c.fg}}; font-family: Arial, Helvetica, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase">{{c.label}}</button>
+</sc-for>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px; border-top: 1px solid #e4ded3; padding-top: 16px">
+<button type="button" onClick="{{loan.shock.toggle}}" aria-pressed="{{loan.shock.on}}" style="min-height: 44px; padding: 8px 14px; border: 1px solid #062f59; background: {{loan.shock.bg}}; color: {{loan.shock.fg}}; font-family: Arial, Helvetica, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; text-align: left">{{loan.shock.label}}</button>
+<span style="font-size: 12.5px; color: #66707f">{{loan.shock.note}}</span>
+</div>
+</section>
+
+<div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+<section style="padding: 28px 40px 30px 28px; border-bottom: 1px solid #e4ded3; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap">
+<h2 style="margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: #062f59">Échéancier annuel · {{loan.unit}}</h2>
+<div style="display: inline-flex; gap: 1px; background: #e4ded3; border: 1px solid #e4ded3">
+<sc-for list="{{loan.viewBtns}}" as="c" hint-placeholder-count="2">
+<button type="button" onClick="{{c.pick}}" aria-pressed="{{c.on}}" style="min-height: 40px; padding: 6px 14px; border: 0; background: {{c.bg}}; color: {{c.fg}}; font-family: Arial, Helvetica, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase">{{c.label}}</button>
+</sc-for>
+</div>
+</div>
+<div style="display: flex; gap: 6px 18px; flex-wrap: wrap; font-family: Arial, Helvetica, sans-serif; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #66707f">
+<span style="display: flex; align-items: center; gap: 6px"><span style="width: 14px; height: 10px; background: #9db6d2"></span>Capital</span>
+<span style="display: flex; align-items: center; gap: 6px"><span style="width: 14px; height: 10px; background: {{loan.a.intColor}}"></span>Intérêts, {{loan.a.viewName}}</span>
+</div>
+<div style="font-size: 14px; color: #062f59; min-height: 22px; font-variant-numeric: tabular-nums">{{loan.a.read}}</div>
+<div role="img" aria-label="{{loan.a.aria}}" onMouseMove="{{loan.a.onMove}}" onMouseLeave="{{loan.a.onLeave}}" style="position: relative; width: 100%; aspect-ratio: 600 / 280">
+<svg viewBox="0 0 600 280" preserveAspectRatio="none" aria-hidden="true" style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible">
+<path d="{{loan.a.grid}}" style="fill: none; stroke: #e4ded3; stroke-width: 1; vector-effect: non-scaling-stroke"></path>
+<path d="{{loan.a.cap}}" style="fill: #9db6d2"></path>
+<path d="{{loan.a.int}}" style="fill: {{loan.a.intColor}}"></path>
+<path d="{{loan.a.hov}}" style="fill: none; stroke: #062f59; stroke-width: 1.5; vector-effect: non-scaling-stroke"></path>
+</svg>
+<sc-for list="{{loan.a.yTicks}}" as="t" hint-placeholder-count="5">
+<div style="position: absolute; left: 0; width: 9.6%; top: {{t.top}}; transform: translateY(-50%); text-align: right; font-family: Arial, Helvetica, sans-serif; font-size: 10px; color: #66707f">{{t.txt}}</div>
+</sc-for>
+<sc-for list="{{loan.a.xTicks}}" as="t" hint-placeholder-count="7">
+<div style="position: absolute; top: 89.5%; left: {{t.left}}; transform: translateX(-50%); font-family: Arial, Helvetica, sans-serif; font-size: 10px; color: #66707f">{{t.txt}}</div>
+</sc-for>
+</div>
+<p style="margin: 0; font-size: 13px; color: #66707f">Années de prêt en abscisse. Survolez une année pour lire le détail.</p>
+</section>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 1px; background: #e4ded3; border-bottom: 1px solid #e4ded3">
+<section style="background: #fbf9f5; padding: 24px 26px; min-width: 0; display: flex; flex-direction: column; gap: 10px">
+<h2 style="margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: #062f59">Capital restant dû par profil</h2>
+<div style="display: flex; flex-direction: column; gap: 4px; font-family: Arial, Helvetica, sans-serif; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: #66707f">
+<sc-for list="{{loan.b.legend}}" as="lg" hint-placeholder-count="3">
+<span style="display: inline-flex; align-items: center; gap: 6px; font-weight: {{lg.fw}}; color: {{lg.tc}}"><svg width="20" height="6" viewBox="0 0 20 6" aria-hidden="true"><path d="M1 3 H19" style="stroke: {{lg.color}}; stroke-width: {{lg.w}}; stroke-dasharray: {{lg.dash}}"></path></svg>{{lg.name}}</span>
+</sc-for>
+</div>
+<div role="img" aria-label="{{loan.b.aria}}" style="position: relative; width: 100%; aspect-ratio: 600 / 240">
+<svg viewBox="0 0 600 240" preserveAspectRatio="none" aria-hidden="true" style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible">
+<path d="{{loan.b.grid}}" style="fill: none; stroke: #e4ded3; stroke-width: 1; vector-effect: non-scaling-stroke"></path>
+<path d="{{loan.b.s0.d}}" style="fill: none; stroke: {{loan.b.s0.color}}; stroke-width: {{loan.b.s0.w}}; stroke-dasharray: {{loan.b.s0.dash}}; stroke-linejoin: round; vector-effect: non-scaling-stroke"></path>
+<path d="{{loan.b.s1.d}}" style="fill: none; stroke: {{loan.b.s1.color}}; stroke-width: {{loan.b.s1.w}}; stroke-dasharray: {{loan.b.s1.dash}}; stroke-linejoin: round; vector-effect: non-scaling-stroke"></path>
+<path d="{{loan.b.s2.d}}" style="fill: none; stroke: {{loan.b.s2.color}}; stroke-width: {{loan.b.s2.w}}; stroke-dasharray: {{loan.b.s2.dash}}; stroke-linejoin: round; vector-effect: non-scaling-stroke"></path>
+</svg>
+<sc-for list="{{loan.b.yTicks}}" as="t" hint-placeholder-count="5">
+<div style="position: absolute; left: 0; width: 8.4%; top: {{t.top}}; transform: translateY(-50%); text-align: right; font-family: Arial, Helvetica, sans-serif; font-size: 10px; color: #66707f">{{t.txt}}</div>
+</sc-for>
+<sc-for list="{{loan.b.xTicks}}" as="t" hint-placeholder-count="7">
+<div style="position: absolute; top: 91%; left: {{t.left}}; transform: translateX(-50%); font-family: Arial, Helvetica, sans-serif; font-size: 10px; color: #66707f">{{t.txt}}</div>
+</sc-for>
+</div>
+<p style="margin: 0; font-size: 13px; color: #66707f">{{loan.b.note}}</p>
+</section>
+
+<section style="background: #fbf9f5; padding: 24px 26px; min-width: 0; display: flex; flex-direction: column; gap: 10px">
+<h2 style="margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: #062f59">Taux payé : fixe contre variable</h2>
+<div style="display: flex; flex-direction: column; gap: 4px; font-family: Arial, Helvetica, sans-serif; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: #66707f">
+<sc-for list="{{loan.dd.legend}}" as="lg" hint-placeholder-count="3">
+<span style="display: inline-flex; align-items: center; gap: 6px"><svg width="20" height="6" viewBox="0 0 20 6" aria-hidden="true"><path d="M1 3 H19" style="stroke: {{lg.color}}; stroke-width: {{lg.w}}; stroke-dasharray: {{lg.dash}}"></path></svg>{{lg.name}}<span style="font-weight: 700; color: #062f59; letter-spacing: 0.04em">{{lg.val}}</span></span>
+</sc-for>
+</div>
+<div role="img" aria-label="{{loan.dd.aria}}" style="position: relative; width: 100%; aspect-ratio: 600 / 240">
+<svg viewBox="0 0 600 240" preserveAspectRatio="none" aria-hidden="true" style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible">
+<path d="{{loan.dd.grid}}" style="fill: none; stroke: #e4ded3; stroke-width: 1; vector-effect: non-scaling-stroke"></path>
+<path d="{{loan.dd.base}}" style="fill: none; stroke: #e9a47c; stroke-width: 1.75; stroke-dasharray: 4 4; vector-effect: non-scaling-stroke"></path>
+<path d="{{loan.dd.var}}" style="fill: none; stroke: #b05a2e; stroke-width: 2.5; stroke-linejoin: round; vector-effect: non-scaling-stroke"></path>
+<path d="{{loan.dd.fix}}" style="fill: none; stroke: #062f59; stroke-width: 2.5; vector-effect: non-scaling-stroke"></path>
+</svg>
+<sc-for list="{{loan.dd.yTicks}}" as="t" hint-placeholder-count="5">
+<div style="position: absolute; left: 0; width: 8.4%; top: {{t.top}}; transform: translateY(-50%); text-align: right; font-family: Arial, Helvetica, sans-serif; font-size: 10px; color: #66707f">{{t.txt}}</div>
+</sc-for>
+<sc-for list="{{loan.dd.xTicks}}" as="t" hint-placeholder-count="7">
+<div style="position: absolute; top: 91%; left: {{t.left}}; transform: translateX(-50%); font-family: Arial, Helvetica, sans-serif; font-size: 10px; color: #66707f">{{t.txt}}</div>
+</sc-for>
+</div>
+<p style="margin: 0; font-size: 13px; color: #66707f">{{loan.dd.note}}</p>
+</section>
+
+<section style="background: #fbf9f5; padding: 24px 26px; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: #062f59">Intérêts totaux par profil</h2>
+<div style="display: flex; gap: 6px 18px; flex-wrap: wrap; font-family: Arial, Helvetica, sans-serif; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #66707f">
+<span style="display: flex; align-items: center; gap: 6px"><span style="width: 14px; height: 10px; background: #062f59"></span>Taux fixe</span>
+<span style="display: flex; align-items: center; gap: 6px"><span style="width: 14px; height: 10px; background: #b05a2e"></span>Variable projeté</span>
+</div>
+<sc-for list="{{loan.c.rows}}" as="r" hint-placeholder-count="3">
+<div style="display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; background: {{r.bg}}; border-left: 2px solid {{r.bl}}">
+<div style="display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap"><span style="font-family: Arial, Helvetica, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #062f59">{{r.name}}</span><span style="font-size: 12.5px; color: #66707f">{{r.wal}}</span></div>
+<div style="display: flex; align-items: center; gap: 8px"><div style="height: 12px; width: {{r.wf}}; background: #062f59"></div><span style="font-family: Arial, Helvetica, sans-serif; font-size: 12px; font-weight: 700; color: #062f59; white-space: nowrap">{{r.tf}}</span></div>
+<div style="display: flex; align-items: center; gap: 8px"><div style="height: 12px; width: {{r.wv}}; background: #b05a2e"></div><span style="font-family: Arial, Helvetica, sans-serif; font-size: 12px; font-weight: 700; color: #b05a2e; white-space: nowrap">{{r.tv}}</span></div>
+</div>
+</sc-for>
+<p style="margin: 0; font-size: 13px; color: #66707f">Même montant, même durée, même marge. Le taux fixe de chaque profil est le swap à sa propre durée de vie moyenne.</p>
+</section>
+
+<section style="background: #fbf9f5; padding: 24px 26px; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: #062f59">Sensibilité du variable</h2>
+<p style="margin: 0; font-size: 13px; color: #66707f">Intérêts totaux si les taux à terme se déplacent de −100 à +100 pb. Tirets bleus : coût du fixe, figé à la signature.</p>
+<div style="position: relative; height: 200px; margin-top: 8px">
+<div style="position: absolute; left: 0; right: 0; top: 0; bottom: 34px; display: flex; align-items: flex-end; gap: 12px; border-bottom: 1px solid #062f59">
+<sc-for list="{{loan.e.bars}}" as="br" hint-placeholder-count="5">
+<div style="flex: 1 1 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 4px">
+<span style="font-family: Arial, Helvetica, sans-serif; font-size: 10.5px; font-weight: 700; color: #062f59; white-space: nowrap">{{br.val}}</span>
+<div style="width: 100%; max-width: 56px; height: {{br.h}}; background: {{br.bg}}"></div>
+</div>
+</sc-for>
+<div style="position: absolute; left: 0; right: 0; bottom: {{loan.e.refBottom}}; border-top: 2px dashed #062f59; pointer-events: none"></div>
+</div>
+<div style="position: absolute; left: 0; right: 0; bottom: 0; height: 28px; display: flex; gap: 12px">
+<sc-for list="{{loan.e.bars}}" as="br" hint-placeholder-count="5">
+<span style="flex: 1 1 0; text-align: center; font-family: Arial, Helvetica, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: #4a5668; padding-top: 7px">{{br.lab}}</span>
+</sc-for>
+</div>
+</div>
+<p style="margin: 0; font-size: 13px; color: #4a5668; border-left: 2px solid #b05a2e; padding-left: 12px">{{loan.e.note}}</p>
+</section>
+</div>
+
+<section style="padding: 28px 40px 32px 28px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap">
+<h2 style="margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: #062f59">Tableau d'amortissement annuel, {{loan.a.viewName}}</h2>
+<span style="font-family: Arial, Helvetica, sans-serif; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #66707f">{{loan.unit}}</span>
+</div>
+<div style="overflow-x: auto; max-height: 440px; overflow-y: auto">
+<div role="table" aria-label="Tableau d'amortissement annuel" style="min-width: 600px; display: flex; flex-direction: column; font-size: 14px; font-variant-numeric: tabular-nums">
+<div role="row" style="display: grid; grid-template-columns: 64px repeat(6, minmax(0, 1fr)); border-bottom: 1px solid #062f59; background: #fbf9f5; position: sticky; top: 0">
+<div role="columnheader" style="padding: 9px 8px 9px 0; font-family: Arial, Helvetica, sans-serif; font-weight: 700; font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase; color: #66707f">Année</div>
+<div role="columnheader" style="padding: 9px 8px; font-family: Arial, Helvetica, sans-serif; font-weight: 700; font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase; color: #66707f; text-align: right">Capital début</div>
+<div role="columnheader" style="padding: 9px 8px; font-family: Arial, Helvetica, sans-serif; font-weight: 700; font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase; color: #66707f; text-align: right">Intérêts</div>
+<div role="columnheader" style="padding: 9px 8px; font-family: Arial, Helvetica, sans-serif; font-weight: 700; font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase; color: #66707f; text-align: right">Amortissement</div>
+<div role="columnheader" style="padding: 9px 8px; font-family: Arial, Helvetica, sans-serif; font-weight: 700; font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase; color: #66707f; text-align: right">Échéances</div>
+<div role="columnheader" style="padding: 9px 8px; font-family: Arial, Helvetica, sans-serif; font-weight: 700; font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase; color: #66707f; text-align: right">Capital fin</div>
+<div role="columnheader" style="padding: 9px 0 9px 8px; font-family: Arial, Helvetica, sans-serif; font-weight: 700; font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase; color: #66707f; text-align: right">Taux moyen</div>
+</div>
+<sc-for list="{{loan.tbl}}" as="r" hint-placeholder-count="7">
+<div role="row" style="display: grid; grid-template-columns: 64px repeat(6, minmax(0, 1fr)); border-bottom: 1px solid #ece7dd; font-weight: {{r.fw}}">
+<div role="rowheader" style="padding: 9px 8px 9px 0; color: #062f59">{{r.y}}</div>
+<div role="cell" style="padding: 9px 8px; text-align: right">{{r.c0}}</div>
+<div role="cell" style="padding: 9px 8px; text-align: right">{{r.it}}</div>
+<div role="cell" style="padding: 9px 8px; text-align: right">{{r.cap}}</div>
+<div role="cell" style="padding: 9px 8px; text-align: right">{{r.pay}}</div>
+<div role="cell" style="padding: 9px 8px; text-align: right">{{r.c1}}</div>
+<div role="cell" style="padding: 9px 0 9px 8px; text-align: right">{{r.r}}</div>
+</div>
+</sc-for>
+</div>
+</div>
+<p style="margin: 0; font-size: 12.5px; color: #66707f; max-width: 95ch">Méthode : taux fixe = swap EUR contre Euribor 6M interpolé à la durée de vie moyenne du prêt (approximation usuelle d'un swap amortissable) + marge. Variable = Euribor 3M en première période, puis taux à terme annuels tirés de la courbe swap (reconstitution simplifiée, écart de base 3M/6M de 5 à 15 pb ignoré). À échéances constantes, l'échéance du variable est recalculée à chaque période. Périodes égales, sans convention exact/360. En XPF : même référence EUR via la parité fixe, la prime de liquidité locale relève de la marge. Outil d'aide à la décision, pas une cotation bancaire.</p>
+</section>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{isHist}}" hint-placeholder-val="{{ false }}">
+<div role="tabpanel" aria-label="Historique">
+<div style="padding: 36px 40px 28px; border-bottom: 1px solid #e4ded3">
+<div style="font-family: Arial, Helvetica, sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: #b05a2e; margin-bottom: 12px">Historique 12 mois</div>
+<h1 style="margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 34px; font-weight: 400; letter-spacing: -0.02em; color: #062f59; line-height: 1.15">Du dernier assouplissement au choc pétrolier, puis au <span style="color: #b05a2e">stress souverain français</span></h1>
+<p style="margin: 10px 0 0; max-width: 80ch">Survolez un graphique : tous se calent sur la même date. Les numéros renvoient à la chronologie en bas de page.</p>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 480px), 1fr)); gap: 1px; background: #e4ded3; border-bottom: 1px solid #e4ded3">
+<sc-for list="{{charts}}" as="c" hint-placeholder-count="7">
+<section style="background: #fbf9f5; padding: 24px 26px; min-width: 0; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap">
+<h2 style="margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: #062f59">{{c.title}}</h2>
+<span style="font-family: Arial, Helvetica, sans-serif; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #66707f">{{c.sub}}</span>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; min-height: 44px; align-content: flex-start">
+<span style="font-family: Arial, Helvetica, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #b05a2e; padding-top: 2px">{{c.when}}</span>
+<sc-for list="{{c.readout}}" as="r" hint-placeholder-count="5">
+<span style="display: inline-flex; align-items: center; gap: 6px; color: #4a5668"><span style="width: 14px; height: 3px; background: {{r.color}}"></span>{{r.name}}<span style="font-family: Arial, Helvetica, sans-serif; font-weight: 700; color: #062f59; font-variant-numeric: tabular-nums">{{r.val}}</span></span>
+</sc-for>
+</div>
+<div role="img" aria-label="{{c.aria}}" onMouseMove="{{c.onMove}}" onMouseLeave="{{c.onLeave}}" style="position: relative; width: 100%; aspect-ratio: 600 / 300">
+<svg viewBox="0 0 600 300" preserveAspectRatio="none" aria-hidden="true" style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible">
+<path d="{{c.grid}}" style="fill: none; stroke: #e4ded3; stroke-width: 1; vector-effect: non-scaling-stroke"></path>
+<path d="{{c.zero}}" style="fill: none; stroke: #8a93a1; stroke-width: 1; vector-effect: non-scaling-stroke"></path>
+<path d="{{c.axis}}" style="fill: none; stroke: #cfc8bb; stroke-width: 1; vector-effect: non-scaling-stroke"></path>
+<path d="{{c.ev}}" style="fill: none; stroke: #d9c8b8; stroke-width: 1; stroke-dasharray: 2 3; vector-effect: non-scaling-stroke"></path>
+<path d="{{c.cross}}" style="fill: none; stroke: #062f59; stroke-width: 1; vector-effect: non-scaling-stroke"></path>
+<path d="{{c.s0.obs}}" style="fill: none; stroke: {{c.s0.color}}; stroke-width: {{c.s0.w}}; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke"></path>
+<path d="{{c.s1.obs}}" style="fill: none; stroke: {{c.s1.color}}; stroke-width: {{c.s1.w}}; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke"></path>
+<path d="{{c.s2.obs}}" style="fill: none; stroke: {{c.s2.color}}; stroke-width: {{c.s2.w}}; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke"></path>
+<path d="{{c.s3.obs}}" style="fill: none; stroke: {{c.s3.color}}; stroke-width: {{c.s3.w}}; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke"></path>
+<path d="{{c.s4.obs}}" style="fill: none; stroke: {{c.s4.color}}; stroke-width: {{c.s4.w}}; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke"></path>
+<path d="{{c.s0.est}}" style="fill: none; stroke: {{c.s0.color}}; stroke-width: 2.5; stroke-dasharray: 1 5; stroke-linecap: round; vector-effect: non-scaling-stroke"></path>
+<path d="{{c.s1.est}}" style="fill: none; stroke: {{c.s1.color}}; stroke-width: 2.5; stroke-dasharray: 1 5; stroke-linecap: round; vector-effect: non-scaling-stroke"></path>
+<path d="{{c.s2.est}}" style="fill: none; stroke: {{c.s2.color}}; stroke-width: 2.5; stroke-dasharray: 1 5; stroke-linecap: round; vector-effect: non-scaling-stroke"></path>
+<path d="{{c.s3.est}}" style="fill: none; stroke: {{c.s3.color}}; stroke-width: 2.5; stroke-dasharray: 1 5; stroke-linecap: round; vector-effect: non-scaling-stroke"></path>
+<path d="{{c.s4.est}}" style="fill: none; stroke: {{c.s4.color}}; stroke-width: 2.5; stroke-dasharray: 1 5; stroke-linecap: round; vector-effect: non-scaling-stroke"></path>
+<path d="{{c.s0.mo}}" style="fill: {{c.s0.color}}; stroke: #fbf9f5; stroke-width: 1"></path>
+<path d="{{c.s1.mo}}" style="fill: {{c.s1.color}}; stroke: #fbf9f5; stroke-width: 1"></path>
+<path d="{{c.s2.mo}}" style="fill: {{c.s2.color}}; stroke: #fbf9f5; stroke-width: 1"></path>
+<path d="{{c.s3.mo}}" style="fill: {{c.s3.color}}; stroke: #fbf9f5; stroke-width: 1"></path>
+<path d="{{c.s4.mo}}" style="fill: {{c.s4.color}}; stroke: #fbf9f5; stroke-width: 1"></path>
+<path d="{{c.s0.me}}" style="fill: #fbf9f5; stroke: {{c.s0.color}}; stroke-width: 1.5"></path>
+<path d="{{c.s1.me}}" style="fill: #fbf9f5; stroke: {{c.s1.color}}; stroke-width: 1.5"></path>
+<path d="{{c.s2.me}}" style="fill: #fbf9f5; stroke: {{c.s2.color}}; stroke-width: 1.5"></path>
+<path d="{{c.s3.me}}" style="fill: #fbf9f5; stroke: {{c.s3.color}}; stroke-width: 1.5"></path>
+<path d="{{c.s4.me}}" style="fill: #fbf9f5; stroke: {{c.s4.color}}; stroke-width: 1.5"></path>
+</svg>
+<sc-for list="{{c.yTicks}}" as="t" hint-placeholder-count="6">
+<div style="position: absolute; left: 0; width: 6.4%; top: {{t.top}}; transform: translateY(-50%); text-align: right; font-family: Arial, Helvetica, sans-serif; font-size: 10px; color: #66707f">{{t.txt}}</div>
+</sc-for>
+<sc-for list="{{c.xTicks}}" as="t" hint-placeholder-count="5">
+<div style="position: absolute; top: 90.5%; left: {{t.left}}; transform: translateX(-50%); font-family: Arial, Helvetica, sans-serif; font-size: 10px; color: #66707f; white-space: nowrap">{{t.txt}}</div>
+</sc-for>
+<sc-for list="{{c.evLabels}}" as="v" hint-placeholder-count="7">
+<div style="position: absolute; top: 0; left: {{v.left}}; transform: translateX(-50%); width: 15px; height: 15px; background: #b05a2e; color: #ffffff; font-family: Arial, Helvetica, sans-serif; font-size: 9px; font-weight: 700; display: flex; align-items: center; justify-content: center">{{v.n}}</div>
+</sc-for>
+<sc-for list="{{c.ends}}" as="l" hint-placeholder-count="5">
+<div style="position: absolute; left: 80.4%; top: {{l.top}}; transform: translateY(-50%); display: flex; align-items: center; gap: 5px; font-family: Arial, Helvetica, sans-serif; font-size: 10px; font-weight: 700; color: #062f59; white-space: nowrap"><span style="width: 12px; height: 3px; background: {{l.color}}"></span>{{l.txt}}</div>
+</sc-for>
+</div>
+<p style="margin: 0; font-size: 13px; color: #66707f">{{c.note}}</p>
+</section>
+</sc-for>
+<section style="background: #fbf9f5; padding: 24px 26px; min-width: 0; display: flex; flex-direction: column; gap: 14px">
+<h2 style="margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: #062f59">Lecture de la période</h2>
+<div style="border-left: 2px solid #062f59; padding-left: 14px; display: flex; flex-direction: column; gap: 2px"><span style="font-family: Arial, Helvetica, sans-serif; font-size: 9px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #062f59">Fait</span><span style="font-size: 14px">Inversion du cycle : la BCE (+50 pb en juin et septembre) et la Fed (+25 pb en septembre) sont passées de l'assouplissement au resserrement après le choc pétrolier ouvert par la guerre avec l'Iran (28 févr. 2026).</span></div>
+<div style="border-left: 2px solid #062f59; padding-left: 14px; display: flex; flex-direction: column; gap: 2px"><span style="font-family: Arial, Helvetica, sans-serif; font-size: 9px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #062f59">Fait</span><span style="font-size: 14px">En zone euro, la hausse est concentrée sur le court terme : Bund 2 ans +105 pb, 10 ans +68 pb, 30 ans +51 pb (zéro-coupon). Aplatissement haussier, typique d'un resserrement anticipé.</span></div>
+<div style="border-left: 2px solid #062f59; padding-left: 14px; display: flex; flex-direction: column; gap: 2px"><span style="font-family: Arial, Helvetica, sans-serif; font-size: 9px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #062f59">Fait</span><span style="font-size: 14px">L'OAT 10 ans a pris 163 pb et l'écart avec le Bund est passé de 78 à 171 pb, l'essentiel depuis la mi-septembre. Depuis le 30 sept., le Bund recule de 25 pb pendant que l'OAT monte de 30 pb : un choc de spread, pas de taux sans risque.</span></div>
+<div style="border-left: 2px solid #062f59; padding-left: 14px; display: flex; flex-direction: column; gap: 2px"><span style="font-family: Arial, Helvetica, sans-serif; font-size: 9px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #062f59">Fait</span><span style="font-size: 14px">Aux États-Unis, le 10 ans a clôturé à 5,31 % le 5 oct. (5,36 % en séance le 7 oct., plus haut depuis 2002 selon la presse) avant de revenir à 5,00 %. Pente 2-10 ans : de 51 à 32 pb.</span></div>
+<div style="border-left: 2px solid #b05a2e; padding-left: 14px; display: flex; flex-direction: column; gap: 2px"><span style="font-family: Arial, Helvetica, sans-serif; font-size: 9px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #b05a2e">Inférence</span><span style="font-size: 14px">Les crédits nouveaux aux entreprises (+21 pb d'oct. 2025 à août 2026) n'ont absorbé qu'une faible part de la hausse du swap 5 ans (environ +90 pb, estimé) : transmission différée ou compression des marges ; rattrapage probable si les taux de marché restent à ce niveau.</span></div>
+</section>
+</div>
+<section style="padding: 30px 40px 34px">
+<h2 style="margin: 0 0 18px; font-family: Arial, Helvetica, sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: #062f59">Chronologie</h2>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 18px 36px">
+<sc-for list="{{timeline}}" as="e" hint-placeholder-count="15">
+<div style="border-left: 2px solid {{e.bl}}; padding-left: 16px; display: flex; flex-direction: column; gap: 4px">
+<div style="font-family: Arial, Helvetica, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: {{e.dc}}; display: flex; gap: 10px; align-items: center"><span style="min-width: 15px; height: 15px; padding: 0 3px; background: {{e.badgeBg}}; color: #ffffff; font-size: 9px; display: inline-flex; align-items: center; justify-content: center">{{e.n}}</span>{{e.date}}</div>
+<span style="font-size: 14px; color: #4a5668">{{e.txt}}</span>
+</div>
+</sc-for>
+</div>
+<p style="margin: 18px 0 0; font-size: 12.5px; color: #66707f">Événements géopolitiques rapportés par la presse, non vérifiés au-delà. Détail des sources dans l'onglet Sources.</p>
+</section>
+</div>
+</sc-if>
+
+<sc-if value="{{isDyn}}" hint-placeholder-val="{{ false }}">
+<div role="tabpanel" aria-label="Dynamiques">
+<div style="padding: 36px 40px 28px; border-bottom: 1px solid #e4ded3">
+<div style="font-family: Arial, Helvetica, sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: #b05a2e; margin-bottom: 12px">Dynamiques de courbe</div>
+<h1 style="margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 34px; font-weight: 400; letter-spacing: -0.02em; color: #062f59; line-height: 1.15">Comment une courbe se déforme, et comment le choc remonte jusqu'au crédit</h1>
+<p style="margin: 10px 0 0; max-width: 80ch">Chaque schéma est tracé avec des données réelles de la période. Trait pâle : avant ; trait plein : après. Variations en points de base (pb).</p>
+</div>
+
+<section style="padding: 30px 40px 34px; border-bottom: 1px solid #e4ded3; display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<h2 style="margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: #062f59">1 · Quatre déformations types, et le choc de spread</h2>
+<p style="margin: 0; font-size: 14px; color: #66707f; max-width: 90ch">« Bull » : les taux baissent. « Bear » : les taux montent. « Steepening » : l'écart long-court s'élargit. « Flattening » : il se réduit. Le classement se lit sur le 2 ans et le 10 ans.</p>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 1px; background: #e4ded3; border: 1px solid #e4ded3">
+<sc-for list="{{dynCards}}" as="r" hint-placeholder-count="5">
+<article style="background: #fbf9f5; padding: 18px 18px 20px; min-width: 0; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-family: Arial, Helvetica, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: #b05a2e">{{r.title}}</span>
+<span style="font-size: 14px; font-weight: 700; color: #062f59; line-height: 1.3">{{r.fr}}</span>
+</div>
+<div role="img" aria-label="{{r.aria}}" style="position: relative; width: 100%; aspect-ratio: 240 / 140">
+<svg viewBox="0 0 240 140" preserveAspectRatio="none" aria-hidden="true" style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible">
+<path d="{{r.grid}}" style="fill: none; stroke: #e4ded3; stroke-width: 1; vector-effect: non-scaling-stroke"></path>
+<path d="{{r.b1}}" style="fill: none; stroke: {{r.c1}}; stroke-width: 2; opacity: 0.3; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke"></path>
+<path d="{{r.b2}}" style="fill: none; stroke: {{r.c2}}; stroke-width: 2; opacity: 0.3; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke"></path>
+<path d="{{r.a1}}" style="fill: none; stroke: {{r.c1}}; stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke"></path>
+<path d="{{r.a2}}" style="fill: none; stroke: {{r.c2}}; stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke"></path>
+<path d="{{r.m1}}" style="fill: {{r.c1}}; stroke: #fbf9f5; stroke-width: 1"></path>
+<path d="{{r.m2}}" style="fill: {{r.c2}}; stroke: #fbf9f5; stroke-width: 1"></path>
+</svg>
+<sc-for list="{{r.yl}}" as="t" hint-placeholder-count="2">
+<div style="position: absolute; left: 0; top: {{t.top}}; transform: translateY(-50%); font-family: Arial, Helvetica, sans-serif; font-size: 9.5px; color: #66707f">{{t.txt}}</div>
+</sc-for>
+<sc-for list="{{r.xl}}" as="t" hint-placeholder-count="3">
+<div style="position: absolute; top: 89%; left: {{t.left}}; transform: translateX(-50%); font-family: Arial, Helvetica, sans-serif; font-size: 9.5px; color: #66707f">{{t.txt}}</div>
+</sc-for>
+</div>
+<span style="font-family: Arial, Helvetica, sans-serif; font-size: 9.5px; letter-spacing: 0.08em; color: #66707f">{{r.legend}}</span>
+<div style="display: flex; flex-wrap: wrap; gap: 4px">
+<sc-for list="{{r.deltas}}" as="dd" hint-placeholder-count="3">
+<span style="font-family: Arial, Helvetica, sans-serif; font-size: 11px; font-weight: 700; padding: 3px 7px; border: 1px solid #e4ded3; color: #062f59">{{dd}}</span>
+</sc-for>
+</div>
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-family: Arial, Helvetica, sans-serif; font-size: 9px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: #66707f">Mécanisme</span>
+<span style="font-size: 13.5px; line-height: 1.45">{{r.mech}}</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-family: Arial, Helvetica, sans-serif; font-size: 9px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: #66707f">Sur la période</span>
+<span style="font-size: 13.5px; line-height: 1.45">{{r.period}}</span>
+</div>
+</article>
+</sc-for>
+</div>
+</section>
+
+<section style="padding: 30px 40px 34px; border-bottom: 1px solid #e4ded3; display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<h2 style="margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: #062f59">2 · Chaîne de transmission : de la BCE au coût du crédit</h2>
+<p style="margin: 0; font-size: 14px; color: #66707f; max-width: 90ch">Niveaux au 31 oct. 2025 puis au 23 oct. 2026, sauf mention contraire. La hausse s'amplifie le long de la chaîne de marché, puis s'atténue fortement au niveau des crédits bancaires.</p>
+</div>
+<div style="overflow-x: auto">
+<div style="position: relative; width: 1040px; height: 490px">
+<svg width="49" height="8" viewBox="0 0 49 8" preserveAspectRatio="none" style="position: absolute; left: 168px; top: 111px; width: 49px; height: 8px; overflow: visible; fill: none; stroke: #4a5668; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-1" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#4a5668" stroke="none" style="stroke: none; fill: #4a5668; fill: context-stroke"/></marker></defs><path d="M 0 4 L 45 4" marker-end="url(#dc-arrow-head-filled-1)"></path></svg>
+<svg width="49" height="8" viewBox="0 0 49 8" preserveAspectRatio="none" style="position: absolute; left: 386px; top: 111px; width: 49px; height: 8px; overflow: visible; fill: none; stroke: #4a5668; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-2" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#4a5668" stroke="none" style="stroke: none; fill: #4a5668; fill: context-stroke"/></marker></defs><path d="M 0 4 L 45 4" marker-end="url(#dc-arrow-head-filled-2)"></path></svg>
+<svg width="49" height="8" viewBox="0 0 49 8" preserveAspectRatio="none" style="position: absolute; left: 604px; top: 111px; width: 49px; height: 8px; overflow: visible; fill: none; stroke: #4a5668; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-3" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#4a5668" stroke="none" style="stroke: none; fill: #4a5668; fill: context-stroke"/></marker></defs><path d="M 0 4 L 45 4" marker-end="url(#dc-arrow-head-filled-3)"></path></svg>
+<svg width="49" height="8" viewBox="0 0 49 8" preserveAspectRatio="none" style="position: absolute; left: 822px; top: 111px; width: 49px; height: 8px; overflow: visible; fill: none; stroke: #4a5668; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-4" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#4a5668" stroke="none" style="stroke: none; fill: #4a5668; fill: context-stroke"/></marker></defs><path d="M 0 4 L 45 4" marker-end="url(#dc-arrow-head-filled-4)"></path></svg>
+<svg width="8" height="129" viewBox="0 0 8 129" preserveAspectRatio="none" style="position: absolute; left: 80px; top: 190px; width: 8px; height: 129px; overflow: visible; fill: none; stroke: #4a5668; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-5" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#4a5668" stroke="none" style="stroke: none; fill: #4a5668; fill: context-stroke"/></marker></defs><path d="M 4 0 L 4 125" marker-end="url(#dc-arrow-head-filled-5)"></path></svg>
+<svg width="8" height="129" viewBox="0 0 8 129" preserveAspectRatio="none" style="position: absolute; left: 734px; top: 190px; width: 8px; height: 129px; overflow: visible; fill: none; stroke: #4a5668; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-6" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#4a5668" stroke="none" style="stroke: none; fill: #4a5668; fill: context-stroke"/></marker></defs><path d="M 4 0 L 4 125" marker-end="url(#dc-arrow-head-filled-6)"></path></svg>
+<svg width="49" height="8" viewBox="0 0 49 8" preserveAspectRatio="none" style="position: absolute; left: 168px; top: 391px; width: 49px; height: 8px; overflow: visible; fill: none; stroke: #4a5668; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-7" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#4a5668" stroke="none" style="stroke: none; fill: #4a5668; fill: context-stroke"/></marker></defs><path d="M 0 4 L 45 4" marker-end="url(#dc-arrow-head-filled-7)"></path></svg>
+<svg width="49" height="8" viewBox="0 0 49 8" preserveAspectRatio="none" style="position: absolute; left: 822px; top: 391px; width: 49px; height: 8px; overflow: visible; fill: none; stroke: #4a5668; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-8" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#4a5668" stroke="none" style="stroke: none; fill: #4a5668; fill: context-stroke"/></marker></defs><path d="M 0 4 L 45 4" marker-end="url(#dc-arrow-head-filled-8)"></path></svg>
+<div style="position: absolute; left: 0px; top: 40px; width: 168px; height: 150px; box-sizing: border-box; padding: 10px; display: flex; align-items: center; justify-content: center; text-align: center; background: #062f59; color: #ffffff; font-size: 13px; line-height: 17px"><span><b>BCE · taux de dépôt</b><br>2,00 % → 2,50 %<br>+50 pb (juin, sept.)</span></div>
+<div style="position: absolute; left: 218px; top: 40px; width: 168px; height: 150px; box-sizing: border-box; padding: 10px; display: flex; align-items: center; justify-content: center; text-align: center; background: #fbf9f5; border: 1px solid #cfc8bb; color: #4a5668; font-size: 13px; line-height: 17px"><span><b style="color: #062f59">€STR, jour le jour</b><br>1,92 % → 2,44 %<br>+52 pb</span></div>
+<div style="position: absolute; left: 436px; top: 40px; width: 168px; height: 150px; box-sizing: border-box; padding: 10px; display: flex; align-items: center; justify-content: center; text-align: center; background: #fbf9f5; border: 1px solid #cfc8bb; color: #4a5668; font-size: 13px; line-height: 17px"><span><b style="color: #062f59">Euribor</b><br>3M : 2,04 → 2,67 %<br>12M : 2,20 → 3,27 %<br>+63 pb · +107 pb</span></div>
+<div style="position: absolute; left: 654px; top: 40px; width: 168px; height: 150px; box-sizing: border-box; padding: 10px; display: flex; align-items: center; justify-content: center; text-align: center; background: #fbf9f5; border: 1px solid #cfc8bb; color: #4a5668; font-size: 13px; line-height: 17px"><span><b style="color: #062f59">Swaps EUR (Euribor 6M)</b><br>2A : 2,13 → 3,40 %<br>5A : 2,34 → 3,43 %<br>+127 pb · +109 pb</span></div>
+<div style="position: absolute; left: 872px; top: 40px; width: 168px; height: 150px; box-sizing: border-box; padding: 10px; display: flex; align-items: center; justify-content: center; text-align: center; background: #f4f1ea; border: 1px solid #cfc8bb; color: #4a5668; font-size: 13px; line-height: 17px"><span><b style="color: #062f59">Crédits nouveaux (FR)</b><br>Entreprises : 3,45 → 3,66 % (août)<br>Immobilier : 3,14 → 3,40 % (sept.)</span></div>
+<div style="position: absolute; left: 0px; top: 320px; width: 168px; height: 150px; box-sizing: border-box; padding: 10px; display: flex; align-items: center; justify-content: center; text-align: center; background: #062f59; color: #ffffff; font-size: 13px; line-height: 17px"><span><b>IEOM · dépôt (XPF)</b><br>2,00 % (déduit) → 2,50 %<br>hausses de juin et d'oct. 2026</span></div>
+<div style="position: absolute; left: 218px; top: 320px; width: 168px; height: 150px; box-sizing: border-box; padding: 10px; display: flex; align-items: center; justify-content: center; text-align: center; background: #f4f1ea; border: 1px solid #cfc8bb; color: #4a5668; font-size: 13px; line-height: 17px"><span><b style="color: #062f59">Équipement, Nouvelle-Calédonie</b><br>4,22 % (T1) → 4,36 % (T2 2026)<br>métropole : 3,57 % (T2)</span></div>
+<div style="position: absolute; left: 654px; top: 320px; width: 168px; height: 150px; box-sizing: border-box; padding: 10px; display: flex; align-items: center; justify-content: center; text-align: center; background: #fbf9f5; border: 1px solid #cfc8bb; color: #4a5668; font-size: 13px; line-height: 17px"><span><b style="color: #062f59">Bund 10 ans</b><br>2,64 → 3,34 %<br>(benchmark)<br>+70 pb</span></div>
+<div style="position: absolute; left: 872px; top: 320px; width: 168px; height: 150px; box-sizing: border-box; padding: 10px; display: flex; align-items: center; justify-content: center; text-align: center; background: #fbf9f5; border: 2px solid #b05a2e; color: #4a5668; font-size: 13px; line-height: 17px"><span><b style="color: #b05a2e">OAT 10 ans</b><br>3,42 → 5,05 %<br>+163 pb<br>171 pb au-dessus du Bund</span></div>
+<div style="position: absolute; left: 0px; top: 8px; width: 420px; font-family: Arial, Helvetica, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: #66707f">Ancrage · marché monétaire · swaps · crédit</div>
+<div style="position: absolute; left: 96px; top: 246px; width: 280px; font-size: 13px; line-height: 16px; color: #4a5668">parité fixe XPF/EUR : l'IEOM suit la BCE</div>
+<div style="position: absolute; left: 750px; top: 238px; width: 280px; font-size: 13px; line-height: 16px; color: #4a5668">Bund = swap − écart de swap<br>(+7 pb à 10 ans au 23 oct.)</div>
+<div style="position: absolute; left: 171px; top: 367px; width: 44px; text-align: center; font-size: 13px; line-height: 16px; color: #4a5668">marge</div>
+</div>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 16px 36px">
+<div style="border-left: 2px solid #062f59; padding-left: 14px; display: flex; flex-direction: column; gap: 2px"><span style="font-family: Arial, Helvetica, sans-serif; font-size: 9px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #062f59">Fait</span><span style="font-size: 14px">Sur 12 mois, +50 pb de taux directeur se traduisent par +52 pb sur l'€STR, +107 pb sur l'Euribor 12 mois et +109 pb sur le swap 5 ans : le marché intègre des hausses futures, au-delà des hausses réalisées.</span></div>
+<div style="border-left: 2px solid #b05a2e; padding-left: 14px; display: flex; flex-direction: column; gap: 2px"><span style="font-family: Arial, Helvetica, sans-serif; font-size: 9px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #b05a2e">Inférence</span><span style="font-size: 14px">Les taux bancaires (+21 pb pour les entreprises, +26 pb pour l'immobilier) ont peu suivi. Délai de transmission et compression des marges sont les explications probables ; les dernières données datent d'août et septembre.</span></div>
+</div>
+</section>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 1px; background: #e4ded3; border-bottom: 1px solid #e4ded3">
+<section style="background: #fbf9f5; padding: 28px 30px 30px 40px; min-width: 0; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<h2 style="margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: #062f59">3 · Décomposer l'OAT 10 ans au 23 oct. 2026</h2>
+<span style="font-size: 14px; color: #66707f">Même date et même échelle pour les deux barres, de 0 à 5,05 %.</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-family: Arial, Helvetica, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #062f59">OAT 10 ans · 5,05 %</span>
+<div role="img" aria-label="OAT 10 ans 5,05 % : OIS 10 ans 3,21 %, plus 13 pb d'écart Bund-OIS, plus 171 pb d'écart OAT-Bund" style="display: flex; gap: 2px; height: 36px; width: 100%">
+<div style="flex: 321 1 0; background: #062f59"></div>
+<div style="flex: 13 1 0; background: #9db6d2"></div>
+<div style="flex: 171 1 0; background: #b05a2e"></div>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-family: Arial, Helvetica, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #062f59">Swap EUR 10 ans (Euribor 6M) · 3,46 %</span>
+<div role="img" aria-label="Swap EUR 10 ans 3,46 % : OIS 10 ans 3,21 %, plus 25 pb de base Euribor 6M contre €STR" style="display: flex; gap: 2px; height: 36px; width: 100%">
+<div style="flex: 321 1 0; background: #062f59"></div>
+<div style="flex: 25 1 0; background: #e9a47c"></div>
+<div style="flex: 159 1 0"></div>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; font-size: 14px; border-top: 1px solid #062f59">
+<div style="display: grid; grid-template-columns: 18px minmax(110px, 180px) 64px minmax(0, 1fr); gap: 10px; align-items: start; padding: 9px 0; border-bottom: 1px solid #ece7dd"><span style="width: 12px; height: 12px; background: #062f59; margin-top: 4px"></span><span style="color: #062f59">Swap €STR (OIS) 10 ans</span><span style="font-family: Arial, Helvetica, sans-serif; font-weight: 700; color: #062f59">3,21 %</span><span style="color: #66707f; font-size: 13px">Anticipations d'€STR plus prime de terme ; les séparer exige un modèle, non fait ici.</span></div>
+<div style="display: grid; grid-template-columns: 18px minmax(110px, 180px) 64px minmax(0, 1fr); gap: 10px; align-items: start; padding: 9px 0; border-bottom: 1px solid #ece7dd"><span style="width: 12px; height: 12px; background: #9db6d2; margin-top: 4px"></span><span style="color: #062f59">Bund − OIS</span><span style="font-family: Arial, Helvetica, sans-serif; font-weight: 700; color: #062f59">+13 pb</span><span style="color: #66707f; font-size: 13px">Offre abondante de titres allemands, rareté moindre du collatéral (lecture probable).</span></div>
+<div style="display: grid; grid-template-columns: 18px minmax(110px, 180px) 64px minmax(0, 1fr); gap: 10px; align-items: start; padding: 9px 0; border-bottom: 1px solid #ece7dd"><span style="width: 12px; height: 12px; background: #b05a2e; margin-top: 4px"></span><span style="color: #062f59">OAT − Bund</span><span style="font-family: Arial, Helvetica, sans-serif; font-weight: 700; color: #b05a2e">+171 pb</span><span style="color: #66707f; font-size: 13px">Prime de risque France : crédit, liquidité, incertitude politique et budgétaire. 78 pb il y a un an.</span></div>
+<div style="display: grid; grid-template-columns: 18px minmax(110px, 180px) 64px minmax(0, 1fr); gap: 10px; align-items: start; padding: 9px 0"><span style="width: 12px; height: 12px; background: #e9a47c; margin-top: 4px"></span><span style="color: #062f59">Base Euribor 6M − €STR</span><span style="font-family: Arial, Helvetica, sans-serif; font-weight: 700; color: #062f59">+25 pb</span><span style="color: #66707f; font-size: 13px">Risque bancaire à 6 mois, payé par tout emprunteur indexé sur l'Euribor.</span></div>
+</div>
+<p style="margin: 0; font-size: 12.5px; color: #66707f">OIS et swap : BlueGamma (23 oct.) ; Bund benchmark 3,34 % : investing.com ; OAT TEC 10 : Banque de France.</p>
+</section>
+
+<section style="background: #fbf9f5; padding: 28px 40px 30px 30px; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<h2 style="margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: #062f59">4 · Courbe des écarts OAT − Bund</h2>
+<span style="font-size: 14px; color: #66707f">Écart par maturité, en pb, à trois dates. Bund zéro-coupon : 166 pb à 10 ans au 23 oct., contre 171 pb en convention benchmark.</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px; font-family: Arial, Helvetica, sans-serif; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: #66707f">
+<sc-for list="{{spr.legend}}" as="lg" hint-placeholder-count="3">
+<span style="display: inline-flex; align-items: center; gap: 6px"><span style="width: 14px; height: 3px; background: {{lg.color}}"></span>{{lg.name}}<span style="font-weight: 700; color: #062f59; letter-spacing: 0.04em">{{lg.vals}}</span></span>
+</sc-for>
+</div>
+<div role="img" aria-label="{{spr.aria}}" style="position: relative; width: 100%; aspect-ratio: 600 / 300">
+<svg viewBox="0 0 600 300" preserveAspectRatio="none" aria-hidden="true" style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible">
+<path d="{{spr.grid}}" style="fill: none; stroke: #e4ded3; stroke-width: 1; vector-effect: non-scaling-stroke"></path>
+<path d="{{spr.p0}}" style="fill: none; stroke: #9db6d2; stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke"></path>
+<path d="{{spr.p1}}" style="fill: none; stroke: #5a7fa8; stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke"></path>
+<path d="{{spr.p2}}" style="fill: none; stroke: #062f59; stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke"></path>
+<path d="{{spr.m0}}" style="fill: #9db6d2; stroke: #fbf9f5; stroke-width: 1"></path>
+<path d="{{spr.m1}}" style="fill: #5a7fa8; stroke: #fbf9f5; stroke-width: 1"></path>
+<path d="{{spr.m2}}" style="fill: #062f59; stroke: #fbf9f5; stroke-width: 1"></path>
+</svg>
+<sc-for list="{{spr.yl}}" as="t" hint-placeholder-count="5">
+<div style="position: absolute; left: 0; width: 6.5%; top: {{t.top}}; transform: translateY(-50%); text-align: right; font-family: Arial, Helvetica, sans-serif; font-size: 10px; color: #66707f">{{t.txt}}</div>
+</sc-for>
+<sc-for list="{{spr.xl}}" as="t" hint-placeholder-count="4">
+<div style="position: absolute; top: 90.5%; left: {{t.left}}; transform: translateX(-50%); font-family: Arial, Helvetica, sans-serif; font-size: 10px; color: #66707f">{{t.txt}}</div>
+</sc-for>
+<sc-for list="{{spr.ends}}" as="l" hint-placeholder-count="3">
+<div style="position: absolute; left: 81%; top: {{l.top}}; transform: translateY(-50%); display: flex; align-items: center; gap: 5px; font-family: Arial, Helvetica, sans-serif; font-size: 10px; font-weight: 700; color: #062f59; white-space: nowrap"><span style="width: 12px; height: 3px; background: {{l.color}}"></span>{{l.txt}}</div>
+</sc-for>
+</div>
+<div style="border-left: 2px solid #b05a2e; padding-left: 14px; display: flex; flex-direction: column; gap: 2px"><span style="font-family: Arial, Helvetica, sans-serif; font-size: 9px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #b05a2e">Lecture</span><span style="font-size: 14px">{{spr.reading}}</span></div>
+</section>
+</div>
+
+<section style="padding: 30px 40px 34px; display: flex; flex-direction: column; gap: 16px">
+<h2 style="margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: #062f59">5 · Repères pour un trésorier en euros ou en francs CFP</h2>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 18px 32px">
+<div style="border-left: 2px solid #062f59; padding-left: 14px; display: flex; flex-direction: column; gap: 2px"><span style="font-family: Arial, Helvetica, sans-serif; font-size: 9px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #062f59">Fait</span><span style="font-size: 14px">Au 23 oct., fixer 5 ans coûte 3,43 % hors marge (swap EUR), contre 2,67 % pour l'Euribor 3 mois : 76 pb de prime pour se protéger d'une hausse que le marché anticipe déjà.</span></div>
+<div style="border-left: 2px solid #8a93a1; padding-left: 14px; display: flex; flex-direction: column; gap: 2px"><span style="font-family: Arial, Helvetica, sans-serif; font-size: 9px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #66707f">Rapporté</span><span style="font-size: 14px">Les OIS intègrent un taux de dépôt de 2,71 % en décembre 2026, 2,92 % en mars 2027 et 3,21 % en septembre 2027 (rateprobability.com, 26 oct.). Nomura juge ce chemin surestimé et retient 3,00 % comme taux terminal.</span></div>
+<div style="border-left: 2px solid #b05a2e; padding-left: 14px; display: flex; flex-direction: column; gap: 2px"><span style="font-family: Arial, Helvetica, sans-serif; font-size: 9px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #b05a2e">Inférence</span><span style="font-size: 14px">Si la BCE s'arrête vers 2,75-3,00 %, le variable redeviendra moins cher que le fixe d'aujourd'hui ; si le choc pétrolier dure, le fixe protège. En XPF, la marge locale (de l'ordre de 160 pb sur l'équipement) pèse autant que ce choix.</span></div>
+</div>
+</section>
+</div>
+</sc-if>
+
+<sc-if value="{{isSrc}}" hint-placeholder-val="{{ false }}">
+<div role="tabpanel" aria-label="Sources et méthode">
+<div style="padding: 36px 40px 28px; border-bottom: 1px solid #e4ded3">
+<div style="font-family: Arial, Helvetica, sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: #b05a2e; margin-bottom: 12px">Sources et méthode</div>
+<h1 style="margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 34px; font-weight: 400; letter-spacing: -0.02em; color: #062f59; line-height: 1.15">D'où viennent les chiffres, et ce qui est estimé</h1>
+<p style="margin: 10px 0 0; max-width: 80ch">Collecte du 27 oct. 2026. L'interface ne se connecte pas au web : les données sont figées à cette date et se rafraîchissent par une nouvelle collecte.</p>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 1px; background: #e4ded3">
+<section style="background: #fbf9f5; padding: 28px 30px 32px 40px; min-width: 0; display: flex; flex-direction: column; gap: 10px; font-size: 14px">
+<h2 style="margin: 0 0 6px; font-family: Arial, Helvetica, sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: #062f59">Sources</h2>
+<span><b style="color: #062f59">Treasuries</b> : US Treasury, Daily Treasury Par Yield Curve Rates, dernier jour ouvré du mois et 26 oct. 2026 (23 oct. pour 2, 5, 10 et 30 ans dans l'historique).</span>
+<span><b style="color: #062f59">Bund</b> : Deutsche Bundesbank, taux zéro-coupon (méthode Svensson), fins de mois et 23 oct. 2026. Benchmark 10 ans : countryeconomy.com, investing.com.</span>
+<span><b style="color: #062f59">OAT</b> : Banque de France, taux de l'échéance constante (TEC 1 à 30 ans).</span>
+<span><b style="color: #062f59">Swaps EUR</b> (fixe annuel contre Euribor 6M) : BlueGamma (24 oct. 2025, 23 oct. 2026), ING Think (10 ans, 31 oct. 2025), Investing.com (2 à 10 ans au 30 sept. 2026, 30 ans au 31 juil. 2026). OIS €STR : BlueGamma.</span>
+<span><b style="color: #062f59">Swaps USD</b> (SOFR OIS) : PCBB (30 oct. 2025), BlueGamma (23 oct. 2026).</span>
+<span><b style="color: #062f59">Monétaire</b> : €STR et Euribor, global-rates.com et euribor-rates.eu (dernière fixation du mois). EFFR et SOFR : Federal Reserve Bank of New York.</span>
+<span><b style="color: #062f59">Taux directeurs</b> : communiqués BCE (via Banco de España), Federal Reserve, IEOM.</span>
+<span><b style="color: #062f59">Taux bancaires</b> : Banque de France (crédits nouveaux aux sociétés non financières) ; Observatoire Crédit Logement/CSA (immobilier, hors assurance) ; IEOM (crédits d'équipement en Nouvelle-Calédonie, moyenne trimestrielle).</span>
+<span><b style="color: #062f59">Anticipations et contexte</b> : rateprobability.com (OIS, 26 oct.), FXStreet (Nomura, Danske), CME FedWatch via la presse, Eurostat et BLS pour l'inflation, presse financière pour les événements de marché.</span>
+</section>
+<section style="background: #fbf9f5; padding: 28px 40px 32px 30px; min-width: 0; display: flex; flex-direction: column; gap: 10px; font-size: 14px">
+<h2 style="margin: 0 0 6px; font-family: Arial, Helvetica, sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: #062f59">Méthode et limites</h2>
+<span><b style="color: #062f59">Points estimés</b> : l'écart swap moins souverain de même maturité est interpolé linéairement dans le temps entre deux dates observées, puis ajouté à la courbe souveraine du mois. Contrôles ponctuels (déc. 2025, févr. et août 2026) : écarts de 0 à 6 pb.</span>
+<span><b style="color: #062f59">Bund en zéro-coupon</b> : environ 5 à 8 pb au-dessus du benchmark à 10 ans. L'écart OAT-Bund lu sur la courbe est donc un peu inférieur à la convention de marché des indicateurs.</span>
+<span><b style="color: #062f59">Chocs</b> : taux directeur pondéré par e^(−t/3), 100 % au jour le jour ; pente pivotant sur le 5 ans, normalisée sur l'écart 2-30 ans ; courbure gaussienne en log-maturité centrée sur 5 ans ; choc de spread OAT réparti selon la structure par terme des écarts OAT-Bund du mois. Outil pédagogique, pas un modèle d'évaluation.</span>
+<span><b style="color: #062f59">Emprunt</b> : taux fixe = swap à la durée de vie moyenne + marge ; variable projeté sur les taux à terme tirés de la courbe swap ; base 3M/6M ignorée.</span>
+<span><b style="color: #b05a2e">À confirmer</b> : taux IEOM avant juin 2026 (2,00 %, déduit du communiqué du 25 juin) ; date de la hausse IEOM d'automne (décision du 16 sept. ou communiqué du 1er oct.) ; marge calédonienne d'environ 160 pb, calcul indicatif.</span>
+</section>
+</div>
+</div>
+</sc-if>
+
+<footer style="padding: 22px 40px 26px; border-top: 1px solid #e4ded3; font-size: 12.5px; color: #66707f; line-height: 1.65">
+<strong style="font-family: Arial, Helvetica, sans-serif; font-size: 9.5px; letter-spacing: 0.2em; text-transform: uppercase; color: #062f59">Sources</strong> US Treasury · Deutsche Bundesbank · Banque de France · BCE · Federal Reserve · NY Fed · IEOM · BlueGamma · global-rates.com · presse financière. Données au 23.10.2026 (Treasuries 26.10.2026), collectées le 27.10.2026. Points estimés signalés. Aide à la décision, pas un conseil en investissement.
+</footer>
+</div>
+</div>
+</template>
+<script src="data.js"></script>
+<script>
+/* Moteur de rendu minimal (sans dépendance) : gabarit {{...}}, <sc-if>, <sc-for>, événements, mise à jour en place du DOM. */
+class DCLogic {
+  constructor(props) { this.props = props || {}; this.state = {}; }
+  setState(o) { Object.assign(this.state, typeof o === 'function' ? o(this.state, this.props) : o); if (this.__schedule) this.__schedule(); }
+  forceUpdate() { if (this.__schedule) this.__schedule(); }
+}
+var DCRuntime = (function () {
+  var WHOLE = /^\{\{\s*([^{}]+?)\s*\}\}$/, ANY = /\{\{\s*([^{}]+?)\s*\}\}/g;
+  function get(scope, path) {
+    path = path.trim();
+    if (path === 'true') return true;
+    if (path === 'false') return false;
+    if (/^-?\d+(\.\d+)?$/.test(path)) return Number(path);
+    var parts = path.split('.'), v, found = false;
+    for (var s = scope; s; s = s.parent) { if (s.vars && Object.prototype.hasOwnProperty.call(s.vars, parts[0])) { v = s.vars[parts[0]]; found = true; break; } }
+    if (!found) return undefined;
+    for (var k = 1; k < parts.length && v != null; k++) v = v[parts[k]];
+    return v;
+  }
+  function interp(str, scope) { return str.replace(ANY, function (_, p) { var v = get(scope, p); return v == null ? '' : String(v); }); }
+  function dispatch(e) { var f = this.__h && this.__h[e.type]; if (typeof f === 'function') f(e); }
+  function evType(name, el) {
+    var n = name.toLowerCase();
+    if (n === 'onclick') return 'click';
+    if (n === 'onchange') return (el.localName === 'input' || el.localName === 'textarea') ? 'input' : 'change';
+    if (n === 'oninput') return 'input';
+    if (n === 'onmousemove') return 'mousemove';
+    if (n === 'onmouseleave') return 'mouseleave';
+    if (n === 'onmouseenter') return 'mouseenter';
+    if (n === 'onkeydown') return 'keydown';
+    return n.slice(2);
+  }
+  function build(t, scope, out) {
+    if (t.nodeType === 3) { out.appendChild(document.createTextNode(t.nodeValue.indexOf('{{') >= 0 ? interp(t.nodeValue, scope) : t.nodeValue)); return; }
+    if (t.nodeType !== 1) return;
+    var tag = t.localName, m, i;
+    if (tag === 'sc-if') {
+      m = (t.getAttribute('value') || '').match(WHOLE);
+      if (m && get(scope, m[1])) for (i = 0; i < t.childNodes.length; i++) build(t.childNodes[i], scope, out);
+      return;
+    }
+    if (tag === 'sc-for') {
+      m = (t.getAttribute('list') || '').match(WHOLE);
+      var list = m ? get(scope, m[1]) : null, as = t.getAttribute('as') || 'item';
+      if (list && list.length) for (var j = 0; j < list.length; j++) {
+        var vars = { $index: j }; vars[as] = list[j];
+        var s = { vars: vars, parent: scope };
+        for (i = 0; i < t.childNodes.length; i++) build(t.childNodes[i], s, out);
+      }
+      return;
+    }
+    var el = document.createElementNS(t.namespaceURI, t.localName), h = null;
+    for (i = 0; i < t.attributes.length; i++) {
+      var a = t.attributes[i], name = a.name, val = a.value;
+      if (name.indexOf('hint-') === 0) continue;
+      m = val.match(WHOLE);
+      if (/^on[a-z]/i.test(name) && m) { h = h || {}; h[evType(name, t)] = get(scope, m[1]); continue; }
+      if (m) {
+        var v = get(scope, m[1]);
+        if (name.indexOf('aria-') === 0) el.setAttribute(name, String(!!v === v ? v : (v == null ? '' : v)));
+        else if (v === true) el.setAttribute(name, '');
+        else if (v !== false && v != null) el.setAttribute(name, String(v));
+      } else if (val.indexOf('{{') >= 0) el.setAttribute(name, interp(val, scope));
+      else el.setAttribute(name, val);
+    }
+    if (h) { el.__h = h; el.__types = {}; for (var ty in h) { el.addEventListener(ty, dispatch); el.__types[ty] = 1; } }
+    var kids = t.localName === 'template' ? t.content.childNodes : t.childNodes;
+    for (i = 0; i < kids.length; i++) build(kids[i], scope, el);
+    if (el.localName === 'input' && el.hasAttribute('value')) el.value = el.getAttribute('value');
+    out.appendChild(el);
+  }
+  function morphChildren(live, next) {
+    var nc = Array.prototype.slice.call(next.childNodes);
+    for (var i = 0; i < nc.length; i++) {
+      if (i < live.childNodes.length) morph(live.childNodes[i], nc[i]);
+      else live.appendChild(nc[i]);
+    }
+    while (live.childNodes.length > nc.length) live.removeChild(live.lastChild);
+  }
+  function morph(live, next) {
+    if (live.nodeType !== next.nodeType || (live.nodeType === 1 && (live.namespaceURI !== next.namespaceURI || live.localName !== next.localName))) { live.parentNode.replaceChild(next, live); return; }
+    if (live.nodeType !== 1) { if (live.nodeValue !== next.nodeValue) live.nodeValue = next.nodeValue; return; }
+    var i, a;
+    for (i = live.attributes.length - 1; i >= 0; i--) { a = live.attributes[i]; if (!next.hasAttribute(a.name)) live.removeAttribute(a.name); }
+    for (i = 0; i < next.attributes.length; i++) { a = next.attributes[i]; if (live.getAttribute(a.name) !== a.value) live.setAttribute(a.name, a.value); }
+    if (live.localName === 'input' && next.hasAttribute('value') && live.value !== next.getAttribute('value')) live.value = next.getAttribute('value');
+    live.__h = next.__h || null;
+    if (next.__h) { live.__types = live.__types || {}; for (var ty in next.__h) if (!live.__types[ty]) { live.addEventListener(ty, dispatch); live.__types[ty] = 1; } }
+    morphChildren(live, next);
+  }
+  function mount(Comp, root, tplEl) {
+    var comp = new Comp({}), pending = false;
+    function render() {
+      pending = false;
+      var vals = comp.renderVals(), scope = { vars: vals, parent: null }, wrap = document.createElement('div');
+      var kids = tplEl.content.childNodes;
+      for (var i = 0; i < kids.length; i++) build(kids[i], scope, wrap);
+      morphChildren(root, wrap);
+    }
+    comp.__schedule = function () { if (!pending) { pending = true; (window.requestAnimationFrame || setTimeout)(render); } };
+    render();
+    if (typeof comp.componentDidMount === 'function') comp.componentDidMount();
+    return comp;
+  }
+  return { mount: mount };
+})();
+
+</script>
+<script>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { tab: 'sim', di: 12, cmp: 'y', vis: { bund: true, sweur: true, oat: true, ust: true, swusd: true }, hover: null, h: null, P: 0, L: 0, S: 0, C: 0, X: 0, zone: 'both', playing: false, nom: 10, marge: 150, preset: '', lAmt: 10, lYears: 7, lMarge: 150, lFee: 50, lProf: 'lin', lGrace: 0, lFreq: 4, lProj: 'fwd', lShock: false, lCur: 'EUR', lView: 'fix', lHov: null };
+  }
+
+  componentWillUnmount() {
+    if (this._t) { clearInterval(this._t); this._t = null; }
+  }
+
+  D() {
+    return window.TAUX_DATA;
+  }
+
+  ser() {
+    return [
+      { k: 'bund', name: 'Bund (Allemagne)', short: 'Bund', color: '#062f59', zone: 'eur' },
+      { k: 'sweur', name: 'Swap EUR (Euribor 6M)', short: 'Swap EUR', color: '#9db6d2', zone: 'eur' },
+      { k: 'oat', name: 'OAT (France)', short: 'OAT', color: '#b05a2e', zone: 'eur' },
+      { k: 'ust', name: 'Treasuries (États-Unis)', short: 'UST', color: '#4a5668', zone: 'usd' },
+      { k: 'swusd', name: 'Swap USD (SOFR)', short: 'Swap USD', color: '#e9a47c', zone: 'usd' }
+    ];
+  }
+
+  f2(v) { return v == null ? '–' : v.toFixed(2).replace('.', ','); }
+  f2n(v) { return v == null ? 'n.d.' : v.toFixed(2).replace('.', ','); }
+  pct(v) { return v == null ? '–' : this.f2(v) + ' %'; }
+  bp(d) {
+    if (d == null || isNaN(d)) return '–';
+    const r = Math.round(d);
+    return (r > 0 ? '+' : r < 0 ? '−' : '±') + Math.abs(r) + ' pb';
+  }
+  bpTxt(v) { if (v == null) return 'n.d.'; const r = Math.round(v); return (r < 0 ? '−' : '') + Math.abs(r); }
+  tenorName(t) {
+    if (t === 0) return 'JJ';
+    if (t === 0.25) return '3M';
+    if (t === 0.5) return '6M';
+    return t + 'A';
+  }
+
+  pts(k, i) {
+    const d = this.D();
+    if (k === 'bund') return d.deT.map((t, j) => ({ t: t, v: d.de[i][j], e: false }));
+    if (k === 'oat') return d.frT.map((t, j) => ({ t: t, v: d.fr[i][j], e: false }));
+    if (k === 'ust') return d.ustT.map((t, j) => ({ t: t, v: d.ust[i][j], e: false }));
+    if (k === 'sweur') {
+      const mm = [{ t: 0.25, v: d.e3m[i], e: false }, { t: 0.5, v: d.e6m[i], e: false }, { t: 1, v: d.e12m[i], e: false }];
+      return mm.concat(d.swT.map((t, j) => ({ t: t, v: d.swe[i][j], e: d.swef[i][j] === 'e' })));
+    }
+    return d.swT.map((t, j) => ({ t: t, v: d.swu[i][j], e: d.swuf[i][j] === 'e' }));
+  }
+  at(k, i, t) {
+    const p = this.pts(k, i).find(q => q.t === t);
+    return p || null;
+  }
+
+  inZone(z) { const s = this.state.zone; return s === 'both' || s === z; }
+  oatW(t, i) {
+    const d = this.D();
+    const tt = t < 2 ? 2 : t;
+    const j = d.deT.indexOf(tt);
+    if (j < 0) return 1;
+    const s = d.fr[i][d.frT.indexOf(tt)] - d.de[i][j];
+    const s10 = d.fr[i][3] - d.de[i][2];
+    if (s10 <= 0) return 1;
+    return Math.max(0, Math.min(2, s / s10));
+  }
+  shockBp(k, t, i) {
+    const s = this.state;
+    const z = k === 'ust' || k === 'swusd' ? 'usd' : 'eur';
+    if (!this.inZone(z)) return 0;
+    if (t === 0) return s.P;
+    const lp = Math.exp(-t / 3);
+    const ls = (Math.log(Math.max(t, 2)) - Math.log(5)) / Math.log(15);
+    const lc = Math.exp(-Math.pow(Math.log(t / 5), 2) / (2 * 0.36));
+    let d = s.P * lp + s.L + s.S * ls + s.C * lc;
+    if (k === 'oat') d += s.X * this.oatW(t, i);
+    return d;
+  }
+  shockOn() { const s = this.state; return s.P !== 0 || s.L !== 0 || s.S !== 0 || s.C !== 0 || s.X !== 0; }
+
+  X(t) { return 72 + 788 * Math.sqrt(t / 30); }
+  Y(v) { return 468 - (v - this._ymin) / (this._ymax - this._ymin) * 444; }
+  lineD(P) { return P.map((p, ix) => (ix ? 'L' : 'M') + this.X(p.t).toFixed(1) + ' ' + this.Y(p.v).toFixed(1)).join(' '); }
+  segD(P, est) {
+    let out = '';
+    for (let k = 1; k < P.length; k++) {
+      const a = P[k - 1], b = P[k];
+      if ((a.e || b.e) !== est) continue;
+      out += 'M' + this.X(a.t).toFixed(1) + ' ' + this.Y(a.v).toFixed(1) + ' L' + this.X(b.t).toFixed(1) + ' ' + this.Y(b.v).toFixed(1) + ' ';
+    }
+    return out;
+  }
+  circ(P, est, r) {
+    return P.filter(p => !!p.e === est).map(p => {
+      const x = this.X(p.t), y = this.Y(p.v);
+      return 'M' + (x - r).toFixed(1) + ' ' + y.toFixed(1) + ' a' + r + ' ' + r + ' 0 1 0 ' + (2 * r) + ' 0 a' + r + ' ' + r + ' 0 1 0 ' + (-2 * r) + ' 0 Z';
+    }).join(' ');
+  }
+  diamond(x, y, r) {
+    return 'M' + x.toFixed(1) + ' ' + (y - r).toFixed(1) + ' L' + (x + r).toFixed(1) + ' ' + y.toFixed(1) + ' L' + x.toFixed(1) + ' ' + (y + r).toFixed(1) + ' L' + (x - r).toFixed(1) + ' ' + y.toFixed(1) + ' Z';
+  }
+
+  regime(d2, d10) {
+    if (d2 == null || d10 == null) return { l: 'n.d.', t: '' };
+    const sl = d10 - d2, av = (d2 + d10) / 2;
+    if (Math.abs(d2) < 5 && Math.abs(d10) < 5) return { l: 'Stable', t: 'Variations inférieures à 5 pb sur 2 et 10 ans.' };
+    if (d2 * d10 < 0 && Math.abs(d2) >= 5 && Math.abs(d10) >= 5) return sl > 0 ? { l: 'Twist pentifiant', t: 'Court terme en baisse, long terme en hausse.' } : { l: 'Twist aplatissant', t: 'Court terme en hausse, long terme en baisse.' };
+    if (Math.abs(sl) < 8) return av > 0 ? { l: 'Hausse parallèle', t: 'Translation vers le haut, pente 2-10 ans quasi inchangée.' } : { l: 'Baisse parallèle', t: 'Translation vers le bas, pente 2-10 ans quasi inchangée.' };
+    if (av > 0) return sl < 0 ? { l: 'Bear flattening', t: 'Hausse menée par le court terme : resserrement monétaire anticipé.' } : { l: 'Bear steepening', t: 'Hausse menée par le long terme : prime de terme, inflation, offre de titres.' };
+    return sl > 0 ? { l: 'Bull steepening', t: 'Baisse menée par le court terme : assouplissement monétaire anticipé.' } : { l: 'Bull flattening', t: 'Baisse menée par le long terme : fuite vers la qualité, ralentissement anticipé.' };
+  }
+
+  chip(on) {
+    return on ? { bg: '#062f59', fg: '#ffffff', bd: '#062f59', fw: '700' } : { bg: '#fbf9f5', fg: '#4a5668', bd: '#e4ded3', fw: '700' };
+  }
+
+  stopPlay() { if (this._t) { clearInterval(this._t); this._t = null; } }
+
+  // ---------- Historique ----------
+  hbuild(def, h, handlers) {
+    const d = this.D();
+    const W0 = 44, W1 = 470, H0 = 26, H1 = 262;
+    const X = day => W0 + (W1 - W0) * day / 360;
+    const isBp = def.unit === 'pb';
+    const all = [];
+    def.series.forEach(s => {
+      if (s.vals) s.vals.forEach(v => { if (v != null) all.push(v); });
+      if (s.step) s.step.forEach(q => all.push(q[2]));
+    });
+    const mn = Math.min.apply(null, all), mx = Math.max.apply(null, all);
+    const span = mx - mn;
+    let step;
+    if (isBp) step = span <= 50 ? 10 : span <= 120 ? 20 : span <= 220 ? 25 : 50;
+    else step = span <= 1.2 ? 0.25 : span <= 3 ? 0.5 : 1;
+    const ymin = Math.floor(mn / step) * step;
+    let ymax = Math.ceil(mx / step) * step;
+    if (ymax - ymin < step * 2) ymax = ymin + step * 2;
+    const Y = v => H1 - (v - ymin) / (ymax - ymin) * (H1 - H0);
+    let grid = '';
+    const yTicks = [];
+    for (let v = ymin; v <= ymax + 1e-9; v += step) {
+      const y = Y(v);
+      grid += 'M' + W0 + ' ' + y.toFixed(1) + ' H' + W1 + ' ';
+      yTicks.push({ top: (y / 3).toFixed(2) + '%', txt: isBp ? this.bpTxt(v) : (step < 0.5 ? v.toFixed(2) : v.toFixed(1)).replace('.', ',') });
+    }
+    const zero = isBp && ymin < 0 && ymax > 0 ? 'M' + W0 + ' ' + Y(0).toFixed(1) + ' H' + W1 : '';
+    const axis = 'M' + W0 + ' ' + H1 + ' H' + W1;
+    const xt = [[0, 'oct. 25'], [91, 'janv. 26'], [181, 'avr. 26'], [273, 'juil. 26'], [357, 'oct. 26']];
+    const xTicks = xt.map(q => ({ left: (X(q[0]) / 6).toFixed(2) + '%', txt: q[1] }));
+    const EV = [[40, 1], [120, 2], [223, 3], [255, 4], [317, 5], [335, 6], [356, 7]];
+    const ev = EV.map(q => 'M' + X(q[0]).toFixed(1) + ' ' + H0 + ' V' + H1).join(' ');
+    const evLabels = EV.map(q => ({ left: (X(q[0]) / 6).toFixed(2) + '%', n: String(q[1]) }));
+    const fmt = v => (isBp ? this.bpTxt(v) : this.f2n(v));
+    const unit = isBp ? ' pb' : ' %';
+    const slots = [];
+    const ends = [];
+    const readout = [];
+    def.series.forEach(s => {
+      const o = { obs: '', est: '', mo: '', me: '', color: s.color, w: s.step ? '2.5' : '2.25' };
+      if (s.step) {
+        let path = '';
+        s.step.forEach((q, k) => {
+          path += (k === 0 ? 'M' + X(q[0]).toFixed(1) + ' ' : 'V') + Y(q[2]).toFixed(1) + ' H' + X(q[1]).toFixed(1) + ' ';
+        });
+        o.obs = path;
+        const last = s.step[s.step.length - 1][2];
+        ends.push({ y: Y(last), txt: s.short + ' ' + fmt(last), color: s.color });
+        let val;
+        if (h == null) val = last;
+        else { const day = d.days[h]; const seg = s.step.find(q => day >= q[0] && day <= q[1]); val = seg ? seg[2] : null; }
+        readout.push({ name: s.short, color: s.color, val: fmt(val) + unit });
+      } else {
+        const days = s.days || d.days;
+        const P = [];
+        s.vals.forEach((v, k) => { if (v != null) P.push({ k: k, x: X(days[k]), y: Y(v), v: v, e: !!(s.flags && s.flags[k] === 'e') }); });
+        for (let k = 1; k < P.length; k++) {
+          const a = P[k - 1], b = P[k];
+          const seg = 'M' + a.x.toFixed(1) + ' ' + a.y.toFixed(1) + ' L' + b.x.toFixed(1) + ' ' + b.y.toFixed(1) + ' ';
+          if (a.e || b.e) o.est += seg; else o.obs += seg;
+        }
+        const r = 3.2;
+        P.forEach(p => {
+          const c = 'M' + (p.x - r).toFixed(1) + ' ' + p.y.toFixed(1) + ' a' + r + ' ' + r + ' 0 1 0 ' + (2 * r) + ' 0 a' + r + ' ' + r + ' 0 1 0 ' + (-2 * r) + ' 0 Z ';
+          if (p.e) o.me += c; else o.mo += c;
+        });
+        const lastP = P[P.length - 1];
+        ends.push({ y: lastP.y, txt: s.short + ' ' + fmt(lastP.v) + (lastP.e ? ' e' : ''), color: s.color });
+        if (h == null) {
+          readout.push({ name: s.short, color: s.color, val: fmt(lastP.v) + unit + (lastP.k !== 12 ? ' (' + d.lab[lastP.k] + ')' : '') + (lastP.e ? ' e' : '') });
+        } else {
+          const v = s.vals[h];
+          readout.push({ name: s.short, color: s.color, val: v == null ? 'n.d.' : fmt(v) + unit + (s.flags && s.flags[h] === 'e' ? ' e' : '') });
+        }
+      }
+      slots.push(o);
+    });
+    while (slots.length < 5) slots.push({ obs: '', est: '', mo: '', me: '', color: '#fbf9f5', w: '0' });
+    ends.sort((a, b) => a.y - b.y);
+    for (let k = 1; k < ends.length; k++) if (ends[k].y < ends[k - 1].y + 15) ends[k].y = ends[k - 1].y + 15;
+    const over = ends.length ? ends[ends.length - 1].y - 278 : 0;
+    if (over > 0) ends.forEach(e => { e.y -= over; });
+    const cross = h == null ? '' : 'M' + X(d.days[h]).toFixed(1) + ' ' + H0 + ' V' + H1;
+    return {
+      title: def.title, sub: def.sub, note: def.note || '',
+      when: h == null ? 'Dernières valeurs' : d.long[h],
+      readout: readout,
+      aria: def.title + ' : ' + readout.map(r => r.name + ' ' + r.val).join(', '),
+      grid: grid, zero: zero, axis: axis, ev: ev, cross: cross,
+      s0: slots[0], s1: slots[1], s2: slots[2], s3: slots[3], s4: slots[4],
+      yTicks: yTicks, xTicks: xTicks, evLabels: evLabels,
+      ends: ends.map(e => ({ top: (e.y / 3).toFixed(2) + '%', txt: e.txt, color: e.color })),
+      onMove: handlers.onMove, onLeave: handlers.onLeave
+    };
+  }
+
+  // ---------- Dynamiques ----------
+  mini(curves) {
+    const W0 = 26, W1 = 226, H0 = 10, H1 = 116;
+    const X = t => W0 + (W1 - W0) * Math.sqrt(t / 30);
+    const all = [];
+    curves.forEach(c => { c.b.forEach(v => all.push(v)); c.a.forEach(v => all.push(v)); });
+    const mn = Math.floor((Math.min.apply(null, all) - 0.05) * 4) / 4;
+    const mx = Math.ceil((Math.max.apply(null, all) + 0.05) * 4) / 4;
+    const Y = v => H1 - (v - mn) / (mx - mn) * (H1 - H0);
+    const line = (T, V) => T.map((t, k) => (k ? 'L' : 'M') + X(t).toFixed(1) + ' ' + Y(V[k]).toFixed(1)).join(' ');
+    const dots = (T, V) => T.map((t, k) => { const x = X(t), y = Y(V[k]), r = 2.8; return 'M' + (x - r).toFixed(1) + ' ' + y.toFixed(1) + ' a' + r + ' ' + r + ' 0 1 0 ' + (2 * r) + ' 0 a' + r + ' ' + r + ' 0 1 0 ' + (-2 * r) + ' 0 Z'; }).join(' ');
+    const out = { b1: '', a1: '', m1: '', b2: '', a2: '', m2: '', c1: '#fbf9f5', c2: '#fbf9f5' };
+    curves.forEach((c, k) => {
+      out['b' + (k + 1)] = line(c.t, c.b);
+      out['a' + (k + 1)] = line(c.t, c.a);
+      out['m' + (k + 1)] = dots(c.t, c.a);
+      out['c' + (k + 1)] = c.color;
+    });
+    out.grid = 'M' + W0 + ' ' + H0 + ' H' + W1 + ' M' + W0 + ' ' + H1 + ' H' + W1;
+    out.yl = [{ top: (H0 / 1.4).toFixed(1) + '%', txt: this.f2(mx) }, { top: (H1 / 1.4).toFixed(1) + '%', txt: this.f2(mn) }];
+    out.xl = [2, 10, 30].map(t => ({ left: (X(t) / 2.4).toFixed(1) + '%', txt: t + 'A' }));
+    return out;
+  }
+  dl(T, b, a, tenors) {
+    return tenors.map(t => { const k = T.indexOf(t); return t + 'A ' + this.bp((a[k] - b[k]) * 100); });
+  }
+
+  histVals() {
+    const d = this.D();
+    const h = this.state.h;
+    const handlers = {
+      onMove: e => {
+        const r = e.currentTarget.getBoundingClientRect();
+        if (!r.width) return;
+        const vx = (e.clientX - r.left) / r.width * 600;
+        const day = (vx - 44) / (470 - 44) * 360;
+        let best = 0, bd = 1e9;
+        d.days.forEach((x, k) => { const dx = Math.abs(x - day); if (dx < bd) { bd = dx; best = k; } });
+        if (best !== this.state.h) this.setState({ h: best });
+      },
+      onLeave: () => { if (this.state.h != null) this.setState({ h: null }); }
+    };
+    const NAVY = '#062f59', SKY = '#9db6d2', TERRA = '#b05a2e', SLATE = '#4a5668', PEACH = '#e9a47c';
+    const col = (rows, j) => rows.map(r => r[j]);
+    const fl = (rows, j) => rows.map(r => r[j]).join('');
+    const sub = (a, b) => a.map((v, k) => (v == null || b[k] == null ? null : Math.round((v - b[k]) * 1000) / 10));
+    const or = (f1, f2) => f1.split('').map((c, k) => (c === 'e' || f2[k] === 'e' ? 'e' : 'o')).join('');
+    const ustDays = d.days.slice(0, 12).concat([360]);
+    const ust10 = col(d.ust, 7), ust2 = col(d.ust, 3), ust3m = col(d.ust, 0);
+    const de2 = col(d.de, 0), de10 = col(d.de, 2);
+    const fr2 = col(d.fr, 1), fr10 = col(d.fr, 3);
+    const swe2 = col(d.swe, 0), swe5 = col(d.swe, 1), swe10 = col(d.swe, 2);
+    const swe2f = fl(d.swef, 0), swe5f = fl(d.swef, 1), swe10f = fl(d.swef, 2);
+    const swu2 = col(d.swu, 0), swu10 = col(d.swu, 2);
+    const swu2f = fl(d.swuf, 0), swu10f = fl(d.swuf, 2);
+    const ust10for = d.ust.map((r, k) => (k === 12 ? d.ust10at2310 : r[7]));
+    const defs = [
+      { title: 'Taux à 10 ans', sub: '% · fins de mois', unit: '%', series: [
+        { short: 'Bund', color: NAVY, vals: d.de10b },
+        { short: 'Swap EUR', color: SKY, vals: swe10, flags: swe10f },
+        { short: 'OAT', color: TERRA, vals: fr10 },
+        { short: 'UST', color: SLATE, vals: ust10, days: ustDays },
+        { short: 'Swap USD', color: PEACH, vals: swu10, flags: swu10f }
+      ], note: 'Bund en benchmark, OAT en TEC 10, Treasuries en par yield (dernier point au 26 oct.). Swaps EUR contre Euribor 6M, swaps USD contre SOFR.' },
+      { title: 'Taux à 2 ans', sub: '% · le plus sensible à la politique monétaire', unit: '%', series: [
+        { short: 'Bund', color: NAVY, vals: de2 },
+        { short: 'Swap EUR', color: SKY, vals: swe2, flags: swe2f },
+        { short: 'OAT', color: TERRA, vals: fr2 },
+        { short: 'UST', color: SLATE, vals: ust2, days: ustDays },
+        { short: 'Swap USD', color: PEACH, vals: swu2, flags: swu2f }
+      ], note: 'Bund 2 ans en zéro-coupon Bundesbank. Mars 2026 : +60 pb sur le Bund 2 ans quand le marché intègre des hausses BCE.' },
+      { title: 'Ancrage monétaire, zone euro', sub: '% · dépôt BCE et interbancaire', unit: '%', series: [
+        { short: 'BCE dépôt', color: NAVY, step: [[0, 229, 2.00], [229, 320, 2.25], [320, 360, 2.50]] },
+        { short: '€STR', color: SKY, vals: d.estr },
+        { short: 'Euribor 3M', color: TERRA, vals: d.e3m },
+        { short: 'Euribor 12M', color: PEACH, vals: d.e12m }
+      ], note: 'L\'Euribor 12 mois a anticipé dès mars 2026 les hausses de juin et septembre (2,23 % → 2,87 % en un mois).' },
+      { title: 'Ancrage monétaire, États-Unis', sub: '% · Fed et marché monétaire', unit: '%', series: [
+        { short: 'Fed (borne haute)', color: NAVY, step: [[0, 41, 4.00], [41, 321, 3.75], [321, 360, 4.00]] },
+        { short: 'EFFR', color: SKY, vals: d.effr },
+        { short: 'SOFR', color: PEACH, vals: d.sofr },
+        { short: 'T-bill 3M', color: TERRA, vals: ust3m, days: ustDays }
+      ], note: 'SOFR en fixation de fin de mois : pics de fin de période en oct. et déc. 2025 (tensions sur le repo). T-bill 3 mois au 26 oct. pour le dernier point.' },
+      { title: 'Écarts de taux', sub: 'points de base', unit: 'pb', series: [
+        { short: 'OAT−Bund 10A', color: TERRA, vals: sub(fr10, d.de10b) },
+        { short: 'OAT−Bund 2A', color: PEACH, vals: sub(fr2, de2) },
+        { short: 'UST−Bund 10A', color: SLATE, vals: sub(ust10for, d.de10b) },
+        { short: 'Swap EUR−Bund 10A', color: SKY, vals: sub(swe10, de10), flags: swe10f }
+      ], note: 'L\'écart OAT-Bund à 2 ans a quadruplé (19 → 78 pb) : le marché tarifie un risque français à court terme, pas seulement à long terme (lecture probable).' },
+      { title: 'Pentes 2-10 ans', sub: 'points de base', unit: 'pb', series: [
+        { short: 'Bund', color: NAVY, vals: sub(de10, de2) },
+        { short: 'Swap EUR', color: SKY, vals: sub(swe10, swe2), flags: or(swe10f, swe2f) },
+        { short: 'OAT', color: TERRA, vals: sub(fr10, fr2) },
+        { short: 'UST', color: SLATE, vals: sub(ust10, ust2), days: ustDays }
+      ], note: 'Toutes les courbes se sont aplaties : le court terme a monté plus vite que le long terme. Bund en zéro-coupon.' },
+      { title: 'Transmission aux taux bancaires', sub: '% · crédits nouveaux', unit: '%', series: [
+        { short: 'Crédits entreprises FR', color: NAVY, vals: d.bdf },
+        { short: 'Immobilier FR', color: SLATE, vals: d.cl },
+        { short: 'Swap EUR 5A', color: SKY, vals: swe5, flags: swe5f },
+        { short: 'Euribor 3M', color: PEACH, vals: d.e3m },
+        { short: 'Équipement NC', color: TERRA, vals: d.nc }
+      ], note: 'Crédits entreprises : Banque de France (dernier point août 2026). Immobilier : Crédit Logement/CSA (sept. 2026). Équipement NC : IEOM, T1 et T2 2026.' }
+    ];
+    const charts = defs.map(df => this.hbuild(df, h, handlers));
+    const TL = [
+      ['', '29 oct. 2025', 'Fed −25 pb (3,75-4,00 %). Le lendemain, la BCE maintient son taux de dépôt à 2,00 %.'],
+      ['', 'oct. 2025', 'S&P abaisse la France à A+ (17 oct.) ; Moody\'s maintient Aa3 et passe la perspective à négative.'],
+      ['1', '10 déc. 2025', 'Fed −25 pb (3,50-3,75 %), troisième baisse consécutive.'],
+      ['', '2 févr. 2026', 'Budget 2026 adopté (article 49.3), déficit visé 5,0 % du PIB.'],
+      ['2', '28 févr. 2026', 'Frappes américano-israéliennes sur l\'Iran. Ormuz fermé le 4 mars, Brent au-dessus de 100 $ le 8 mars.'],
+      ['', 'mars 2026', 'Le marché intègre des hausses BCE : Euribor 12M de 2,23 % à 2,87 %, Bund 2 ans +60 pb.'],
+      ['3', '11 juin 2026', 'BCE +25 pb (dépôt 2,25 %), première hausse depuis 2023. L\'IEOM suit le 25 juin.'],
+      ['4', '13 juil. 2026', 'Rupture de la trêve, Ormuz de nouveau fermé (date approximative, rapportée).'],
+      ['5', '10 et 16 sept. 2026', 'BCE +25 pb (dépôt 2,50 %), puis Fed +25 pb (3,75-4,00 %), première hausse américaine depuis 2023.'],
+      ['', '18 sept. 2026', 'Écart OAT-Bund au-dessus de 100 pb, une première depuis 2012 (rapporté).'],
+      ['6', '1er oct. 2026', 'Projet de budget 2027 : déficit visé 5,0 %, 340 Md€ d\'émissions. Inflation zone euro de septembre : 3,8 %. L\'IEOM annonce une hausse de 25 pb.'],
+      ['', '5-7 oct. 2026', 'Treasuries 10 ans à 5,31 % et 30 ans à 5,67 % en clôture, plus hauts de la période.'],
+      ['', '14 oct. 2026', 'Inflation américaine de septembre : 3,7 % sur un an.'],
+      ['7', '22-23 oct. 2026', 'OAT 10 ans à 5,13 % (TEC) et écart de 174,6 pb le 22 oct. Moody\'s maintient Aa3 perspective négative le 23. Brent à 116,72 $.'],
+      ['', 'à venir (au 27 oct.)', 'FOMC le 28 oct. (statu quo attendu à environ 90 %), BCE le 29 oct. (hausse tarifée environ 3 %). Hausses de décembre largement anticipées des deux côtés.']
+    ];
+    const timeline = TL.map(t => ({ n: t[0] || '·', badgeBg: t[0] ? '#b05a2e' : '#9db6d2', bl: t[0] ? '#b05a2e' : '#e4ded3', dc: t[0] ? '#b05a2e' : '#66707f', date: t[1], txt: t[2] }));
+    return { charts: charts, timeline: timeline };
+  }
+
+  dynVals() {
+    const d = this.D();
+    const U = '#4a5668', B = '#062f59', O = '#b05a2e';
+    const R = [];
+    const mk = (o, curves) => Object.assign(o, this.mini(curves));
+    R.push(mk({
+      title: 'Bull steepening', fr: 'Baisse des taux, menée par le court terme',
+      legend: 'Treasuries · pâle 31.10.25 · plein 28.11.25',
+      deltas: this.dl(d.ustT, d.ust[0], d.ust[1], [2, 10, 30]),
+      mech: 'Le marché anticipe des baisses de taux directeurs : le 2 ans recule plus que le 10 ans, la courbe se pentifie.',
+      period: 'Treasuries en novembre 2025, avant la troisième baisse de la Fed (10 déc.).'
+    }, [{ t: d.ustT, b: d.ust[0], a: d.ust[1], color: U }]));
+    R.push(mk({
+      title: 'Bear flattening', fr: 'Hausse des taux, menée par le court terme',
+      legend: 'Bund · pâle 27.02.26 · plein 31.03.26',
+      deltas: this.dl(d.deT, d.de[4], d.de[5], [2, 10, 30]),
+      mech: 'Le marché intègre des hausses de taux directeurs : le court terme monte plus vite, la courbe s\'aplatit.',
+      period: 'Bund en mars 2026 : choc pétrolier après les frappes sur l\'Iran, environ 75 pb de hausses BCE intégrées fin mars.'
+    }, [{ t: d.deT, b: d.de[4], a: d.de[5], color: B }]));
+    R.push(mk({
+      title: 'Bear steepening', fr: 'Hausse des taux, menée par le long terme',
+      legend: 'Treasuries · pâle 30.06.26 · plein 31.07.26',
+      deltas: this.dl(d.ustT, d.ust[8], d.ust[9], [2, 10, 30]),
+      mech: 'Les investisseurs exigent une prime de terme plus élevée (inflation durable, offre de titres longs) : le long terme monte plus.',
+      period: 'Treasuries en juillet 2026 : rupture de la trêve, Ormuz refermé, trois votes pour une hausse au FOMC. Prime de terme : lecture probable.'
+    }, [{ t: d.ustT, b: d.ust[8], a: d.ust[9], color: U }]));
+    R.push(mk({
+      title: 'Bull flattening', fr: 'Baisse des taux, menée par le long terme',
+      legend: 'Treasuries · pâle 30.09.26 · plein 26.10.26',
+      deltas: this.dl(d.ustT, d.ust[11], d.ust[12], [2, 10, 30]),
+      mech: 'Fuite vers la qualité ou anticipation de ralentissement : le long terme baisse plus que le court terme.',
+      period: 'Treasuries en octobre 2026, après les plus hauts du 5-7 oct. ; le 22 oct., plus forte baisse quotidienne du 10 ans depuis mars 2023 (rapporté).'
+    }, [{ t: d.ustT, b: d.ust[11], a: d.ust[12], color: U }]));
+    R.push(mk({
+      title: 'Choc de spread', fr: 'Le risque souverain se découple du taux sans risque',
+      legend: 'Bund (bleu) et OAT (terre) · 30.09 → 23.10.26',
+      deltas: ['Bund 10A ' + this.bp((d.de[12][2] - d.de[11][2]) * 100), 'OAT 10A ' + this.bp((d.fr[12][3] - d.fr[11][3]) * 100), 'Écart 117 → 171 pb'],
+      mech: 'Le taux de référence baisse (fuite vers la qualité) pendant que l\'émetteur jugé plus risqué voit son taux monter.',
+      period: 'France en octobre 2026 : budget 2027, émissions record, mouvements sociaux ; OAT 10 ans au-dessus de 5 % les 21-22 oct.'
+    }, [{ t: d.deT, b: d.de[11], a: d.de[12], color: B }, { t: d.frT, b: d.fr[11], a: d.fr[12], color: O }]));
+    R.forEach(r => { r.aria = r.title + ' : ' + r.deltas.join(', '); });
+
+    const T = [2, 5, 10, 30];
+    const sp = i => T.map((t, k) => (d.fr[i][d.frT.indexOf(t)] - d.de[i][k]) * 100);
+    const S = [
+      { name: '31 oct. 2025', color: '#9db6d2', v: sp(0) },
+      { name: '30 sept. 2026', color: '#5a7fa8', v: sp(11) },
+      { name: '23 oct. 2026', color: '#062f59', v: sp(12) }
+    ];
+    const W0 = 50, W1 = 470, H0 = 16, H1 = 262;
+    const X = t => W0 + (W1 - W0) * (Math.sqrt(t) - Math.sqrt(2)) / (Math.sqrt(30) - Math.sqrt(2));
+    const Y = v => H1 - v / 200 * (H1 - H0);
+    const spr = { legend: [], ends: [] };
+    let grid = '';
+    const yl = [];
+    for (let v = 0; v <= 200; v += 50) { grid += 'M' + W0 + ' ' + Y(v).toFixed(1) + ' H' + W1 + ' '; yl.push({ top: (Y(v) / 3).toFixed(2) + '%', txt: String(v) }); }
+    spr.grid = grid;
+    spr.yl = yl;
+    spr.xl = T.map(t => ({ left: (X(t) / 6).toFixed(2) + '%', txt: t + 'A' }));
+    S.forEach((s, k) => {
+      spr['p' + k] = T.map((t, j) => (j ? 'L' : 'M') + X(t).toFixed(1) + ' ' + Y(s.v[j]).toFixed(1)).join(' ');
+      spr['m' + k] = T.map((t, j) => { const x = X(t), y = Y(s.v[j]), r = 4; return 'M' + (x - r).toFixed(1) + ' ' + y.toFixed(1) + ' a' + r + ' ' + r + ' 0 1 0 ' + (2 * r) + ' 0 a' + r + ' ' + r + ' 0 1 0 ' + (-2 * r) + ' 0 Z'; }).join(' ');
+      spr.legend.push({ name: s.name, color: s.color, vals: s.v.map(v => Math.round(v)).join(' / ') });
+      spr.ends.push({ top: (Y(s.v[3]) / 3).toFixed(2) + '%', txt: s.name.replace(' 2025', ' 25').replace(' 2026', ' 26') + ' : ' + Math.round(s.v[3]), color: s.color });
+    });
+    const d0 = S[0].v, d2 = S[2].v;
+    spr.reading = 'Sur 12 mois, l\'écart a augmenté de ' + Math.round(d2[0] - d0[0]) + ' pb à 2 ans, ' + Math.round(d2[1] - d0[1]) + ' pb à 5 ans, ' + Math.round(d2[2] - d0[2]) + ' pb à 10 ans et ' + Math.round(d2[3] - d0[3]) + ' pb à 30 ans. La courbe des écarts s\'est relevée et aplatie : quand l\'écart court terme monte vite, le marché tarifie un risque proche (politique, budgétaire) et pas seulement un risque lointain. Lecture probable, non une certitude.';
+    spr.aria = 'Écart OAT moins Bund par maturité 2, 5, 10, 30 ans : ' + S.map(s => s.name + ' ' + s.v.map(v => Math.round(v)).join(', ')).join(' ; ');
+    return { dynCards: R, spr: spr };
+  }
+
+  // ---------- Simulateur ----------
+  simVals() {
+    const d = this.D();
+    const st = this.state;
+    const i = st.di;
+    const SER = this.ser();
+    const HT = [0, 0.25, 0.5, 1, 2, 3, 5, 7, 10, 20, 30];
+    const ref = st.cmp === 'y' ? 0 : st.cmp === 'm' ? (i > 0 ? i - 1 : null) : null;
+    const kref = st.cmp === 'none' ? 0 : ref;
+    const shockOn = this.shockOn();
+    const vis = SER.filter(s => st.vis[s.k]);
+
+    const vals = [2, 5.5];
+    vis.forEach(s => {
+      this.pts(s.k, i).forEach(p => { vals.push(p.v); if (shockOn) vals.push(p.v + this.shockBp(s.k, p.t, i) / 100); });
+      if (ref != null) this.pts(s.k, ref).forEach(p => vals.push(p.v));
+    });
+    vals.push(d.estr[i], d.effr[i]);
+    const mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals);
+    this._ymin = Math.min(1.5, Math.floor((mn - 0.1) * 2) / 2);
+    this._ymax = Math.max(6, Math.ceil((mx + 0.1) * 2) / 2);
+
+    let grid = '';
+    const yTicks = [];
+    for (let v = this._ymin; v <= this._ymax + 1e-9; v += 0.5) {
+      const y = this.Y(v);
+      grid += 'M72 ' + y.toFixed(1) + ' H860 ';
+      yTicks.push({ top: (y / 5.2).toFixed(2) + '%', txt: v.toFixed(1).replace('.', ',') });
+    }
+    const tickT = [0, 0.25, 1, 2, 5, 10, 20, 30];
+    let vgrid = '';
+    const xTicks = tickT.map(t => { const x = this.X(t); vgrid += 'M' + x.toFixed(1) + ' 24 V468 '; return { left: (x / 10).toFixed(2) + '%', txt: this.tenorName(t) }; });
+    const axis = 'M72 468 H860 M72 24 V468';
+
+    const p = {};
+    SER.forEach(s => {
+      const on = st.vis[s.k];
+      const P = this.pts(s.k, i);
+      const o = { ghost: '', obs: '', est: '', shock: '', mo: '', me: '' };
+      if (on) {
+        o.obs = this.segD(P, false);
+        o.est = this.segD(P, true);
+        o.mo = this.circ(P, false, 5);
+        o.me = this.circ(P, true, 4.5);
+        if (ref != null) o.ghost = this.lineD(this.pts(s.k, ref));
+        if (shockOn) o.shock = this.lineD(P.map(q => ({ t: q.t, v: q.v + this.shockBp(s.k, q.t, i) / 100 })));
+      }
+      p[s.k] = o;
+    });
+
+    const anchors = [];
+    if (st.vis.bund || st.vis.oat || st.vis.sweur) anchors.push({ name: '€STR', v: d.estr[i], k: 'sweur' });
+    if (st.vis.ust || st.vis.swusd) anchors.push({ name: 'EFFR', v: d.effr[i], k: 'ust' });
+    const anch = anchors.map(a => this.diamond(72, this.Y(a.v), 6)).join(' ');
+    const anchShock = shockOn ? anchors.map(a => { const sv = a.v + this.shockBp(a.k, 0, i) / 100; return Math.abs(sv - a.v) > 1e-6 ? this.diamond(72, this.Y(sv), 6) : ''; }).join(' ') : '';
+    const anchLabels = anchors.map(a => ({ top: (this.Y(a.v) / 5.2).toFixed(2) + '%', txt: a.name + ' ' + this.f2(a.v) }));
+
+    const ends = vis.map(s => { const P = this.pts(s.k, i); const last = P[P.length - 1]; return { y: this.Y(last.v), txt: s.short + ' ' + this.f2(last.v) + (last.e ? ' e' : ''), color: s.color }; });
+    ends.sort((a, b) => a.y - b.y);
+    for (let k = 1; k < ends.length; k++) if (ends[k].y < ends[k - 1].y + 20) ends[k].y = ends[k - 1].y + 20;
+    const over = ends.length ? ends[ends.length - 1].y - 500 : 0;
+    if (over > 0) ends.forEach(e => { e.y -= over; });
+    const endLabels = ends.map(e => ({ top: (e.y / 5.2).toFixed(2) + '%', txt: e.txt, color: e.color }));
+
+    let cross = '';
+    let tip = { show: false, left: 'auto', right: 'auto', title: '', rows: [] };
+    if (st.hover != null) {
+      const t = HT[st.hover];
+      const x = this.X(t);
+      cross = 'M' + x.toFixed(1) + ' 24 V468';
+      const rows = [];
+      if (t === 0) {
+        if (st.vis.bund || st.vis.oat || st.vis.sweur) rows.push({ name: '€STR', color: '#ffffff', val: this.pct(d.estr[i]), extra: kref != null ? this.bp((d.estr[i] - d.estr[kref]) * 100) : '' });
+        if (st.vis.ust) rows.push({ name: 'Fed funds effectif', color: '#ffffff', val: this.pct(d.effr[i]), extra: kref != null ? this.bp((d.effr[i] - d.effr[kref]) * 100) : '' });
+        if (st.vis.swusd) rows.push({ name: 'SOFR', color: '#ffffff', val: this.pct(d.sofr[i]), extra: kref != null ? this.bp((d.sofr[i] - d.sofr[kref]) * 100) : '' });
+      } else {
+        vis.forEach(s => {
+          const q = this.at(s.k, i, t);
+          if (!q) return;
+          let extra = '';
+          if (shockOn) extra = '→ ' + this.f2(q.v + this.shockBp(s.k, t, i) / 100);
+          else if (kref != null) { const r0 = this.at(s.k, kref, t); extra = r0 ? this.bp((q.v - r0.v) * 100) : ''; }
+          rows.push({ name: s.short + (q.e ? ' (estimé)' : ''), color: s.k === 'bund' ? '#ffffff' : s.color, val: this.pct(q.v), extra: extra });
+        });
+      }
+      const xr = x / 1000;
+      tip = { show: true, left: xr < 0.6 ? ((xr * 100) + 1.5).toFixed(1) + '%' : 'auto', right: xr < 0.6 ? 'auto' : ((100 - xr * 100) + 1.5).toFixed(1) + '%', title: 'Maturité ' + this.tenorName(t) + (shockOn ? ' · base → choc' : kref != null ? ' · écart vs ' + d.lab[kref] : ''), rows: rows.length ? rows : [{ name: 'Aucune donnée', color: '#062f59', val: '', extra: '' }] };
+    }
+
+    const tbl = vis.map(s => {
+      const P = this.pts(s.k, i);
+      const cells = HT.map(t => {
+        if (t === 0) {
+          const v = s.k === 'sweur' ? d.estr[i] : s.k === 'ust' ? d.effr[i] : s.k === 'swusd' ? d.sofr[i] : null;
+          return v == null ? { txt: '–', col: '#8a93a1', fs: 'normal' } : { txt: this.f2(v), col: '#4a5668', fs: 'normal' };
+        }
+        const q = P.find(r => r.t === t);
+        if (!q) return { txt: '–', col: '#8a93a1', fs: 'normal' };
+        return { txt: this.f2(q.v) + (q.e ? ' e' : ''), col: q.e ? '#66707f' : '#4a5668', fs: q.e ? 'italic' : 'normal' };
+      });
+      return { name: s.name, color: s.color, cells: cells };
+    });
+
+    const dlt = (a, b) => (kref == null || b == null ? '' : 'vs ' + d.lab[kref] + ' : ' + this.bp((a - b) * 100));
+    const ust10 = j => (j === 12 ? d.ust10at2310 : d.ust[j][7]);
+    const s2s10 = {
+      ust: j => (d.ust[j][7] - d.ust[j][3]) * 100,
+      bund: j => (d.de[j][2] - d.de[j][0]) * 100,
+      oat: j => (d.fr[j][3] - d.fr[j][1]) * 100,
+      sweur: j => (d.swe[j][2] - d.swe[j][0]) * 100
+    };
+    const dk = f => (kref == null ? '' : 'vs ' + d.lab[kref] + ' : ' + this.bp(f(i) - f(kref)));
+    const kpiGroups = [
+      { title: 'Ancrage monétaire', items: [
+        { label: 'BCE, taux de dépôt', val: this.pct(d.dfr[i]), delta: dlt(d.dfr[i], kref != null ? d.dfr[kref] : null) },
+        { label: 'Fed funds, fourchette', val: this.f2(d.fed[i]) + '–' + this.f2(d.fed[i] + 0.25) + ' %', delta: dlt(d.fed[i], kref != null ? d.fed[kref] : null) },
+        { label: '€STR', val: this.pct(d.estr[i]), delta: dlt(d.estr[i], kref != null ? d.estr[kref] : null) },
+        { label: 'Euribor 3 mois', val: this.pct(d.e3m[i]), delta: dlt(d.e3m[i], kref != null ? d.e3m[kref] : null) },
+        { label: 'Euribor 12 mois', val: this.pct(d.e12m[i]), delta: dlt(d.e12m[i], kref != null ? d.e12m[kref] : null) },
+        { label: 'Fed funds effectif', val: this.pct(d.effr[i]), delta: dlt(d.effr[i], kref != null ? d.effr[kref] : null) }
+      ] },
+      { title: 'Pentes 2-10 ans', items: [
+        { label: 'Treasuries', val: this.bp(s2s10.ust(i)), delta: dk(s2s10.ust) },
+        { label: 'Bund', val: this.bp(s2s10.bund(i)), delta: dk(s2s10.bund) },
+        { label: 'OAT', val: this.bp(s2s10.oat(i)), delta: dk(s2s10.oat) },
+        { label: 'Swap EUR' + (d.swef[i][0] === 'e' || d.swef[i][2] === 'e' ? ' (estimé)' : ''), val: this.bp(s2s10.sweur(i)), delta: dk(s2s10.sweur) }
+      ] },
+      { title: 'Écarts à 10 ans', items: [
+        { label: 'OAT − Bund (benchmark)', val: this.bp((d.fr[i][3] - d.de10b[i]) * 100), delta: dk(j => (d.fr[j][3] - d.de10b[j]) * 100) },
+        { label: 'Treasuries − Bund', val: this.bp((ust10(i) - d.de10b[i]) * 100), delta: dk(j => (ust10(j) - d.de10b[j]) * 100) },
+        { label: 'Swap EUR − Bund' + (d.swef[i][2] === 'e' ? ' (estimé)' : ''), val: this.bp((d.swe[i][2] - d.de[i][2]) * 100), delta: dk(j => (d.swe[j][2] - d.de[j][2]) * 100) },
+        { label: 'Swap USD − Treasuries' + (d.swuf[i][2] === 'e' ? ' (estimé)' : ''), val: this.bp((d.swu[i][2] - ust10(i)) * 100), delta: dk(j => (d.swu[j][2] - ust10(j)) * 100) }
+      ] }
+    ];
+
+    const regimes = kref == null ? [] : vis.map(s => {
+      const g = t => { const a = this.at(s.k, i, t), b = this.at(s.k, kref, t); return a && b ? (a.v - b.v) * 100 : null; };
+      const d2 = g(2), d10 = g(10), d30 = g(30);
+      const r = this.regime(d2, d10);
+      return { name: s.short, color: s.color, d2: this.bp(d2), d10: this.bp(d10), d30: this.bp(d30), label: r.l, text: r.t };
+    });
+    const refPhrase = kref == null ? '(pas de mois précédent)' : 'depuis le ' + d.long[kref];
+
+    const months = d.lab.map((l, ix) => Object.assign({ label: l, on: ix === i, pick: () => { this.stopPlay(); this.setState({ di: ix, playing: false }); } }, this.chip(ix === i)));
+    const serBtns = SER.map(s => ({ name: s.short, color: s.color, on: !!st.vis[s.k], op: st.vis[s.k] ? '1' : '0.5', bg: st.vis[s.k] ? '#fbf9f5' : '#f4f1ea', bd: '#e4ded3', toggle: () => { const v = Object.assign({}, this.state.vis); v[s.k] = !v[s.k]; this.setState({ vis: v }); } }));
+    const cmpBtns = [['none', 'Aucune'], ['y', 'Il y a 12 mois'], ['m', 'Mois précédent']].map(c => Object.assign({ label: c[1], on: st.cmp === c[0], pick: () => this.setState({ cmp: c[0] }) }, this.chip(st.cmp === c[0])));
+    const zoneBtns = [['eur', 'Zone euro'], ['usd', 'États-Unis'], ['both', 'Les deux']].map(c => Object.assign({ label: c[1], on: st.zone === c[0], pick: () => this.setState({ zone: c[0] }) }, this.chip(st.zone === c[0])));
+
+    const LV = [
+      { k: 'P', label: 'Taux directeur (choc persistant)', min: -100, max: 150, help: 'Plein effet au jour le jour, environ 50 % à 2 ans, 20 % à 5 ans.' },
+      { k: 'L', label: 'Niveau (translation parallèle)', min: -150, max: 150, help: 'Même variation sur toutes les maturités de marché.' },
+      { k: 'S', label: 'Pente 2-30 ans (pivot 5 ans)', min: -100, max: 100, help: 'Positif : pentification. Négatif : aplatissement.' },
+      { k: 'C', label: 'Courbure (papillon centré sur 5 ans)', min: -75, max: 75, help: 'Positif : le ventre de courbe monte plus que les ailes.' },
+      { k: 'X', label: 'Écart OAT − Bund à 10 ans', min: -100, max: 150, help: 'Appliqué à l\'OAT seule, réparti selon la structure actuelle des écarts.' }
+    ];
+    const levers = LV.map(l => ({ id: 'lev-' + l.k, label: l.label, min: l.min, max: l.max, value: st[l.k], txt: this.bp(st[l.k]), help: l.help, onChange: e => { const o = { preset: '' }; o[l.k] = Number(e.target.value); this.setState(o); } }));
+
+    const PR = [
+      { label: 'Choc pétrolier prolongé', v: { P: 50, L: 20, S: -20, C: 0, X: 15, zone: 'both' }, desc: 'Resserrement monétaire supplémentaire des deux côtés, aplatissement haussier, léger stress sur l\'OAT.' },
+      { label: 'Crise souveraine France', v: { P: 0, L: -15, S: 0, C: 0, X: 80, zone: 'eur' }, desc: 'Fuite vers la qualité sur le Bund, élargissement de l\'écart OAT − Bund de 80 pb à 10 ans.' },
+      { label: 'Pivot accommodant', v: { P: -75, L: -15, S: 30, C: 0, X: -20, zone: 'both' }, desc: 'Baisses de taux anticipées, pentification baissière (bull steepening), détente des écarts.' },
+      { label: 'Hausse de la prime de terme', v: { P: 0, L: 10, S: 45, C: -10, X: 10, zone: 'both' }, desc: 'Pentification haussière (bear steepening) : inflation durable, offre de titres longs.' },
+      { label: 'Réinitialiser', v: { P: 0, L: 0, S: 0, C: 0, X: 0, zone: 'both' }, desc: 'Aucun choc.' }
+    ];
+    const presets = PR.map(x => ({ label: x.label, desc: x.desc, pick: () => this.setState(Object.assign({ preset: x.label === 'Réinitialiser' ? '' : x.label + ' : ' + x.desc }, x.v)) }));
+    const presetNote = st.preset || 'Choisissez un scénario ou réglez les curseurs.';
+
+    const IT = [2, 5, 10, 30];
+    const impact = vis.map(s => ({ name: s.short, color: s.color, cells: IT.map(t => {
+      const q = this.at(s.k, i, t);
+      if (!q) return { a: '–', b: '' };
+      const dd = this.shockBp(s.k, t, i);
+      return { a: this.f2(q.v) + ' → ' + this.f2(q.v + dd / 100), b: this.bp(dd) };
+    }) }));
+    const shockSummary = shockOn ? 'Zone : ' + (st.zone === 'eur' ? 'zone euro' : st.zone === 'usd' ? 'États-Unis' : 'les deux') + '. Taux directeur ' + this.bp(st.P) + ', niveau ' + this.bp(st.L) + ', pente ' + this.bp(st.S) + ', courbure ' + this.bp(st.C) + ', écart OAT ' + this.bp(st.X) + '.' : 'Aucun choc appliqué : les valeurs de base sont reprises telles quelles.';
+
+    const sw5 = this.at('sweur', i, 5);
+    const dS5 = this.shockBp('sweur', 5, i);
+    const dS3m = this.shockBp('sweur', 0.25, i);
+    const m = st.marge / 100;
+    const fixB = sw5.v + m, fixS = fixB + dS5 / 100;
+    const varB = d.e3m[i] + m, varS = varB + dS3m / 100;
+    const nom = st.nom;
+    const xpf = v => (v * 119.33174).toLocaleString('fr-FR', { maximumFractionDigits: 1 });
+    const meur = v => v.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const fin = {
+      marge: st.marge,
+      margeTxt: st.marge + ' pb',
+      onMarge: e => this.setState({ marge: Number(e.target.value) }),
+      fix: this.pct(shockOn ? fixS : fixB),
+      fixDetail: 'Swap 5 ans ' + this.f2(sw5.v) + ' %' + (sw5.e ? ' (estimé)' : '') + (shockOn ? ', base ' + this.pct(fixB) : ''),
+      var: this.pct(shockOn ? varS : varB),
+      varDetail: 'Euribor 3M ' + this.f2(d.e3m[i]) + ' %' + (shockOn ? ', base ' + this.pct(varB) : ''),
+      prime: this.bp(((shockOn ? fixS : fixB) - (shockOn ? varS : varB)) * 100),
+      sentence: 'Pour ' + nom + ' M€ (≈ ' + xpf(nom) + ' M XPF), intérêts annuels de ' + meur(nom * (shockOn ? fixS : fixB) / 100) + ' M€ à taux fixe (≈ ' + xpf(nom * (shockOn ? fixS : fixB) / 100) + ' M XPF) contre ' + meur(nom * (shockOn ? varS : varB) / 100) + ' M€ la première année à taux variable' + (shockOn ? ' dans le scénario, contre ' + meur(nom * fixB / 100) + ' M€ à taux fixe sans choc.' : '.')
+    };
+    const nomBtns = [5, 10, 25, 50].map(n => Object.assign({ label: n + ' M€', on: st.nom === n, pick: () => this.setState({ nom: n }) }, this.chip(st.nom === n)));
+
+    const chartAria = 'Courbes des taux au ' + d.long[i] + ' : ' + vis.map(s => { const q = this.at(s.k, i, 10); return s.short + ' 10 ans ' + (q ? this.pct(q.v) : 'n.d.'); }).join(', ') + '. Le tableau sous le graphique reprend toutes les valeurs.';
+
+    return {
+      dateLong: d.long[i],
+      isLast: i === 12,
+      playText: st.playing ? 'Pause' : 'Lecture',
+      togglePlay: () => {
+        if (this.state.playing) { this.stopPlay(); this.setState({ playing: false }); return; }
+        const start = this.state.di >= 12 ? 0 : this.state.di;
+        this.setState({ playing: true, di: start });
+        this.stopPlay();
+        this._t = setInterval(() => {
+          const nx = this.state.di + 1;
+          if (nx > 12) { this.stopPlay(); this.setState({ playing: false }); }
+          else this.setState({ di: nx });
+        }, 900);
+      },
+      months: months,
+      serBtns: serBtns,
+      cmpBtns: cmpBtns,
+      zoneBtns: zoneBtns,
+      ghostLegend: ref != null ? d.lab[ref] : 'aucune',
+      g: { grid: grid, vgrid: vgrid, axis: axis, cross: cross, anch: anch, anchShock: anchShock },
+      p: p,
+      yTicks: yTicks,
+      xTicks: xTicks,
+      anchLabels: anchLabels,
+      endLabels: endLabels,
+      tip: tip,
+      onMove: e => {
+        const r = e.currentTarget.getBoundingClientRect();
+        if (!r.width) return;
+        const vx = (e.clientX - r.left) / r.width * 1000;
+        let best = 0, bd = 1e9;
+        HT.forEach((t, ix) => { const dx = Math.abs(this.X(t) - vx); if (dx < bd) { bd = dx; best = ix; } });
+        if (best !== this.state.hover) this.setState({ hover: best });
+      },
+      onLeave: () => { if (this.state.hover != null) this.setState({ hover: null }); },
+      chartAria: chartAria,
+      tenorHeads: HT.map(t => this.tenorName(t)),
+      tbl: tbl,
+      kpiGroups: kpiGroups,
+      regimes: regimes,
+      refPhrase: refPhrase,
+      levers: levers,
+      presets: presets,
+      presetNote: presetNote,
+      impact: impact,
+      shockSummary: shockSummary,
+      fin: fin,
+      nomBtns: nomBtns
+    };
+  }
+
+  renderVals() {
+    const st = this.state;
+    const TABS = [['sim', 'Simulateur'], ['loan', 'Emprunt'], ['hist', 'Historique'], ['dyn', 'Dynamiques'], ['src', 'Sources']];
+    const tabs = TABS.map(t => ({
+      label: t[1], on: st.tab === t[0],
+      bg: st.tab === t[0] ? '#fbf9f5' : 'transparent',
+      fg: st.tab === t[0] ? '#062f59' : '#9db6d2',
+      pick: () => { if (t[0] !== 'sim') this.stopPlay(); this.setState({ tab: t[0], playing: t[0] === 'sim' ? this.state.playing : false, hover: null, h: null, lHov: null }); }
+    }));
+    return Object.assign(
+      { asOfLabel: (window.TAUX_DATA.meta && window.TAUX_DATA.meta.asOfLabel) || '', tabs: tabs, isSim: st.tab === 'sim', isLoan: st.tab === 'loan', isHist: st.tab === 'hist', isDyn: st.tab === 'dyn', isSrc: st.tab === 'src' },
+      this.simVals(), this.histVals(), this.dynVals(), { loan: this.loanVals() }
+    );
+  }
+
+  // ---------- Simulation d'emprunt ----------
+  niceStep(raw) {
+    if (!(raw > 0)) return 1;
+    const pw = Math.pow(10, Math.floor(Math.log10(raw)));
+    const m = raw / pw;
+    return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 2.5 ? 2.5 : m <= 5 ? 5 : 10) * pw;
+  }
+  loanCurve(i, useShock) {
+    const d = this.D();
+    const sh = t => (useShock ? this.shockBp('sweur', t, i) / 100 : 0);
+    const P = [[0.25, d.e3m[i]], [0.5, d.e6m[i]], [1, d.e12m[i]], [2, d.swe[i][0]], [5, d.swe[i][1]], [10, d.swe[i][2]], [30, d.swe[i][3]]].map(q => [q[0], q[1] + sh(q[0])]);
+    const par = T => {
+      if (T <= P[0][0]) return P[0][1];
+      for (let k = 1; k < P.length; k++) if (T <= P[k][0]) { const a = P[k - 1], b = P[k]; return a[1] + (b[1] - a[1]) * (T - a[0]) / (b[0] - a[0]); }
+      return P[P.length - 1][1];
+    };
+    const df = [1];
+    let sum = 0;
+    for (let n = 1; n <= 30; n++) { const s = par(n) / 100; const v = (1 - s * sum) / (1 + s); df.push(v); sum += v; }
+    const fwd = n => { const k = Math.max(1, Math.min(30, n)); return (df[k - 1] / df[k] - 1) * 100; };
+    return { par: par, fwd: fwd, e3m: P[0][1] };
+  }
+  loanSched(o) {
+    const N = Math.max(1, Math.round(o.years * o.freq));
+    const G = o.prof === 'inf' ? 0 : Math.min(o.grace * o.freq, N - 1);
+    let crd = o.amt;
+    const rows = [];
+    for (let p = 0; p < N; p++) {
+      const t0 = p / o.freq, rA = o.rate(p, t0), r = rA / 100 / o.freq;
+      const it = crd * r;
+      let cap;
+      if (o.prof === 'inf') cap = p === N - 1 ? crd : 0;
+      else if (p < G) cap = 0;
+      else if (o.prof === 'lin') cap = o.amt / (N - G);
+      else { const rem = N - p; const pay = Math.abs(r) > 1e-12 ? crd * r / (1 - Math.pow(1 + r, -rem)) : crd / rem; cap = pay - it; }
+      if (p === N - 1) cap = crd;
+      rows.push({ p: p, t0: t0, t1: (p + 1) / o.freq, crd0: crd, it: it, cap: cap, rA: rA });
+      crd -= cap;
+    }
+    return rows;
+  }
+  loanFixed(cv, b) {
+    let r = cv.par(b.years) + b.marge / 100, rows, wal = b.years;
+    for (let k = 0; k < 3; k++) {
+      rows = this.loanSched(Object.assign({}, b, { rate: () => r }));
+      wal = rows.reduce((s, q) => s + q.cap * q.t1, 0) / b.amt;
+      r = cv.par(wal) + b.marge / 100;
+    }
+    rows = this.loanSched(Object.assign({}, b, { rate: () => r }));
+    return { r: r, swap: r - b.marge / 100, wal: wal, rows: rows };
+  }
+  loanVar(cv, b, mode, shift) {
+    const s = (shift || 0) / 100;
+    const base = (p, t0) => (mode === 'flat' || p === 0 ? cv.e3m : cv.fwd(Math.floor(t0 + 1e-9) + 1)) + s;
+    const rows = this.loanSched(Object.assign({}, b, { rate: (p, t0) => base(p, t0) + b.marge / 100 }));
+    rows.forEach(q => { q.base = q.rA - b.marge / 100; });
+    return { rows: rows };
+  }
+  loanIrr(rows, amt, fee, freq) {
+    const net = amt * (1 - fee / 10000);
+    const f = x => { let v = 0; rows.forEach((q, k) => { v += (q.it + q.cap) / Math.pow(1 + x, k + 1); }); return v - net; };
+    let lo = -0.5 / freq, hi = 1;
+    for (let k = 0; k < 80; k++) { const m = (lo + hi) / 2; if (f(m) > 0) lo = m; else hi = m; }
+    return (Math.pow(1 + (lo + hi) / 2, freq) - 1) * 100;
+  }
+  loanYears(rows, freq, years) {
+    const Y = [];
+    for (let y = 0; y < years; y++) Y.push({ y: y + 1, crd0: null, it: 0, cap: 0, crd1: 0, rSum: 0, n: 0 });
+    rows.forEach(q => { const o = Y[Math.min(years - 1, Math.floor(q.p / freq))]; if (o.crd0 == null) o.crd0 = q.crd0; o.it += q.it; o.cap += q.cap; o.crd1 = q.crd0 - q.cap; o.rSum += q.rA; o.n++; });
+    Y.forEach(o => { o.pay = o.it + o.cap; o.rAvg = o.n ? o.rSum / o.n : 0; if (o.crd0 == null) o.crd0 = 0; if (Math.abs(o.crd1) < 1e-9) o.crd1 = 0; });
+    return Y;
+  }
+
+  loanVals() {
+    const d = this.D();
+    const st = this.state;
+    const i = st.di;
+    const cur = st.lCur;
+    const FX = 119.33174;
+    const NAVY = '#062f59', TERRA = '#b05a2e';
+    const money = vM => {
+      if (cur === 'EUR') return Math.abs(vM) >= 1 ? vM.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' M€' : Math.round(vM * 1000).toLocaleString('fr-FR') + ' k€';
+      const x = vM * FX;
+      return x.toLocaleString('fr-FR', { maximumFractionDigits: Math.abs(x) >= 100 ? 0 : 1 }) + ' M XPF';
+    };
+    const disp = vM => (cur === 'EUR' ? vM * 1000 : vM * FX);
+    const tv = vM => (cur === 'EUR' ? Math.round(vM * 1000).toLocaleString('fr-FR') : (vM * FX).toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }));
+    const unit = cur === 'EUR' ? 'k€' : 'M XPF';
+    const shockSet = this.shockOn();
+    const useShock = st.lShock && shockSet;
+    const cv = this.loanCurve(i, useShock);
+    const b = { amt: st.lAmt, years: st.lYears, freq: st.lFreq, prof: st.lProf, grace: st.lGrace, marge: st.lMarge };
+    const m = b.marge / 100;
+    const sumI = rows => rows.reduce((s, q) => s + q.it, 0);
+    const avgRate = rows => { let a = 0, w = 0; rows.forEach(q => { a += q.it; w += q.crd0 / b.freq; }); return w > 0 ? a / w * 100 : 0; };
+    const yrs = v => v.toFixed(1).replace('.', ',') + (v < 2 ? ' an' : ' ans');
+
+    const PROF = [['lin', 'Amortissement constant'], ['ann', 'Échéances constantes'], ['inf', 'In fine']];
+    const prof = PROF.map(pf => {
+      const bb = Object.assign({}, b, { prof: pf[0] });
+      const f = this.loanFixed(cv, bb);
+      const v = this.loanVar(cv, bb, st.lProj, 0);
+      return { k: pf[0], name: pf[1], fx: f, vr: v, intF: sumI(f.rows), intV: sumI(v.rows) };
+    });
+    const sel = prof.find(x => x.k === b.prof);
+    const fx = sel.fx, vr = sel.vr, intFix = sel.intF, intVar = sel.intV;
+    const varAvg = avgRate(vr.rows);
+    const irr = this.loanIrr(fx.rows, b.amt, st.lFee, b.freq);
+    const viewVar = st.lView === 'var';
+    const Yr = this.loanYears(viewVar ? vr.rows : fx.rows, b.freq, b.years);
+    const YrFix = this.loanYears(fx.rows, b.freq, b.years);
+    let maxPay = 0, maxY = 1;
+    YrFix.forEach(o => { if (o.pay > maxPay + 1e-12) { maxPay = o.pay; maxY = o.y; } });
+
+    const g = s => sumI(this.loanVar(cv, b, st.lProj, s).rows) - intFix;
+    let beTxt, beDetail;
+    if (g(-500) > 0) { beTxt = '< −500 pb'; beDetail = 'Le variable reste plus cher que le fixe même avec une forte baisse des taux.'; }
+    else if (g(500) < 0) { beTxt = '> +500 pb'; beDetail = 'Le variable reste moins cher que le fixe même avec une forte hausse des taux.'; }
+    else {
+      let lo = -500, hi = 500;
+      for (let k = 0; k < 40; k++) { const mid = (lo + hi) / 2; if (g(mid) > 0) hi = mid; else lo = mid; }
+      const be = (lo + hi) / 2;
+      beTxt = this.bp(be);
+      beDetail = be >= 0 ? 'Le variable coûte moins que le fixe tant que les taux à terme ne montent pas de plus de ' + Math.round(be) + ' pb en moyenne.' : 'Le variable ne devient moins cher que si les taux baissent de plus de ' + Math.round(-be) + ' pb par rapport aux anticipations.';
+    }
+    const diff = intVar - intFix;
+    const kp = (label, val, detail, primary) => ({ label: label, val: val, detail: detail, bg: primary ? NAVY : '#fbf9f5', labC: primary ? '#9db6d2' : '#66707f', valC: primary ? '#ffffff' : NAVY, detC: primary ? '#e9a47c' : '#66707f' });
+    const kpis = [
+      kp('Taux fixe tout compris', this.pct(fx.r), 'Swap ' + this.f2(fx.swap) + ' % à ' + yrs(fx.wal) + ' (durée de vie moyenne) + ' + b.marge + ' pb', true),
+      kp('Taux variable, 1re période', this.pct(cv.e3m + m), 'Moyenne projetée : ' + this.pct(varAvg) + (st.lProj === 'flat' ? ' (Euribor constant)' : ' (taux à terme implicites)'), false),
+      kp('Intérêts totaux, fixe', money(intFix), 'Variable projeté : ' + money(intVar) + ' (' + (diff >= 0 ? '+' : '−') + money(Math.abs(diff)) + ')', false),
+      kp('Coût actuariel (fixe)', this.pct(irr), 'Taux annuel effectif, commission de ' + st.lFee + ' pb et capitalisation ' + (b.freq === 12 ? 'mensuelle' : b.freq === 4 ? 'trimestrielle' : b.freq === 2 ? 'semestrielle' : 'annuelle') + ' incluses', false),
+      kp('Annuité maximale (fixe)', money(maxPay), 'Année ' + maxY + ' ; total des échéances : ' + money(intFix + b.amt), false),
+      kp('Point mort du variable', beTxt, beDetail, false)
+    ];
+
+    // Échéancier annuel
+    const n = b.years;
+    const A = { X0: 64, X1: 588, Y0: 14, Y1: 244 };
+    const slot = (A.X1 - A.X0) / n, bw = Math.max(3, slot * 0.66);
+    const maxD = Math.max.apply(null, Yr.map(o => disp(o.pay)));
+    const stpA = this.niceStep(maxD / 4);
+    const topA = Math.max(stpA, Math.ceil(maxD / stpA) * stpA);
+    const yA = v => A.Y1 - v / topA * (A.Y1 - A.Y0);
+    let capD = '', intD = '', gridA = '';
+    const yTicksA = [];
+    for (let v = 0; v <= topA + 1e-9; v += stpA) { gridA += 'M' + A.X0 + ' ' + yA(v).toFixed(1) + ' H' + A.X1 + ' '; yTicksA.push({ top: (yA(v) / 2.8).toFixed(2) + '%', txt: v.toLocaleString('fr-FR', { maximumFractionDigits: stpA < 1 ? 1 : 0 }) }); }
+    Yr.forEach((o, k) => {
+      const x = A.X0 + slot * k + (slot - bw) / 2;
+      const yc = yA(disp(o.cap)), yt = yA(disp(o.pay));
+      if (A.Y1 - yc > 0.5) capD += 'M' + x.toFixed(1) + ' ' + yc.toFixed(1) + ' h' + bw.toFixed(1) + ' V' + A.Y1 + ' h' + (-bw).toFixed(1) + ' Z ';
+      const ib = A.Y1 - yc > 0.5 ? yc - 2 : A.Y1;
+      if (ib - yt > 0.5) intD += 'M' + x.toFixed(1) + ' ' + yt.toFixed(1) + ' h' + bw.toFixed(1) + ' V' + ib.toFixed(1) + ' h' + (-bw).toFixed(1) + ' Z ';
+    });
+    const every = n <= 12 ? 1 : n <= 20 ? 2 : 5;
+    const xTicksA = Yr.filter((o, k) => k === 0 || (k + 1) % every === 0).map(o => ({ left: ((A.X0 + slot * (o.y - 1) + slot / 2) / 6).toFixed(2) + '%', txt: String(o.y) }));
+    let hovD = '', readA;
+    const hk = st.lHov != null && st.lHov < n ? st.lHov : null;
+    if (hk != null) {
+      const o = Yr[hk];
+      const x = A.X0 + slot * hk + (slot - bw) / 2 - 3;
+      hovD = 'M' + x.toFixed(1) + ' ' + (yA(disp(o.pay)) - 4).toFixed(1) + ' h' + (bw + 6).toFixed(1) + ' V' + A.Y1 + ' h' + (-(bw + 6)).toFixed(1) + ' Z';
+      readA = 'Année ' + o.y + ' : capital ' + tv(o.cap) + ' · intérêts ' + tv(o.it) + ' · échéances ' + tv(o.pay) + ' · capital restant ' + tv(o.crd1) + ' ' + unit + ' · taux ' + this.f2(o.rAvg) + ' %';
+    } else {
+      const ti = Yr.reduce((s, o) => s + o.it, 0);
+      readA = 'Total sur ' + n + (n > 1 ? ' ans' : ' an') + ' : capital ' + tv(b.amt) + ' · intérêts ' + tv(ti) + ' · échéances ' + tv(b.amt + ti) + ' ' + unit;
+    }
+    const a = {
+      grid: gridA, cap: capD, int: intD, hov: hovD, yTicks: yTicksA, xTicks: xTicksA, read: readA,
+      intColor: viewVar ? TERRA : NAVY, viewName: viewVar ? 'taux variable projeté' : 'taux fixe',
+      aria: 'Échéancier annuel : ' + Yr.map(o => 'année ' + o.y + ' ' + tv(o.pay) + ' ' + unit).join(', '),
+      onMove: e => {
+        const r = e.currentTarget.getBoundingClientRect();
+        if (!r.width) return;
+        const vx = (e.clientX - r.left) / r.width * 600;
+        const k = Math.max(0, Math.min(n - 1, Math.floor((vx - A.X0) / slot)));
+        if (k !== this.state.lHov) this.setState({ lHov: k });
+      },
+      onLeave: () => { if (this.state.lHov != null) this.setState({ lHov: null }); }
+    };
+
+    // Capital restant dû
+    const B = { X0: 56, X1: 584, Y0: 12, Y1: 212 };
+    const xB = t => B.X0 + (B.X1 - B.X0) * t / n;
+    const yB = v => B.Y1 - v / b.amt * (B.Y1 - B.Y0);
+    let gridB = '';
+    const yTicksB = [0, 0.25, 0.5, 0.75, 1].map(f => { gridB += 'M' + B.X0 + ' ' + yB(f * b.amt).toFixed(1) + ' H' + B.X1 + ' '; return { top: (yB(f * b.amt) / 2.4).toFixed(2) + '%', txt: Math.round(disp(f * b.amt)).toLocaleString('fr-FR') }; });
+    const xTicksB = [];
+    for (let y = 0; y <= n; y += (n <= 12 ? 1 : n <= 20 ? 2 : 5)) xTicksB.push({ left: (xB(y) / 6).toFixed(2) + '%', txt: String(y) });
+    const bs = prof.map(pf => {
+      const on = pf.k === b.prof;
+      let dPath = 'M' + xB(0).toFixed(1) + ' ' + yB(b.amt).toFixed(1);
+      pf.fx.rows.forEach(q => { dPath += ' L' + xB(q.t1).toFixed(1) + ' ' + yB(Math.max(0, q.crd0 - q.cap)).toFixed(1); });
+      return { d: dPath, color: on ? NAVY : '#8a93a1', w: on ? '2.5' : '1.75', dash: on ? 'none' : '5 4' };
+    });
+    const bChart = {
+      grid: gridB, s0: bs[0], s1: bs[1], s2: bs[2], yTicks: yTicksB, xTicks: xTicksB,
+      legend: prof.map((pf, k) => ({ name: pf.name + ' · DVM ' + yrs(pf.fx.wal), color: bs[k].color, w: bs[k].w, dash: bs[k].dash, fw: pf.k === b.prof ? '700' : '400', tc: pf.k === b.prof ? NAVY : '#66707f' })),
+      aria: 'Capital restant dû : ' + prof.map(pf => pf.name + ', durée de vie moyenne ' + yrs(pf.fx.wal)).join(' ; '),
+      note: 'Capital en ' + unit + ', années en abscisse. Plus le capital reste dû longtemps, plus la durée de vie moyenne et les intérêts augmentent.' + (b.grace > 0 && b.prof !== 'inf' ? ' Différé de ' + b.grace + ' an' + (b.grace > 1 ? 's' : '') + ' inclus.' : '')
+    };
+
+    // Taux payés
+    const R = { X0: 56, X1: 584, Y0: 12, Y1: 212 };
+    const rv = [fx.r];
+    vr.rows.forEach(q => { rv.push(q.rA, q.base); });
+    const rmn = Math.min.apply(null, rv), rmx = Math.max.apply(null, rv);
+    const rst = rmx - rmn > 1.5 ? 0.5 : 0.25;
+    const r0 = Math.floor((rmn - 0.1) / rst) * rst, r1 = Math.ceil((rmx + 0.1) / rst) * rst;
+    const xR = t => R.X0 + (R.X1 - R.X0) * t / n;
+    const yR = v => R.Y1 - (v - r0) / (r1 - r0) * (R.Y1 - R.Y0);
+    let gridR = '';
+    const yTicksR = [];
+    for (let v = r0; v <= r1 + 1e-9; v += rst) { gridR += 'M' + R.X0 + ' ' + yR(v).toFixed(1) + ' H' + R.X1 + ' '; yTicksR.push({ top: (yR(v) / 2.4).toFixed(2) + '%', txt: v.toFixed(2).replace('.', ',') }); }
+    const stepPath = key => { let s = ''; vr.rows.forEach((q, k) => { s += (k === 0 ? 'M' + xR(0).toFixed(1) + ' ' : ' V') + yR(q[key]).toFixed(1) + ' H' + xR(q.t1).toFixed(1); }); return s; };
+    const ddChart = {
+      grid: gridR, fix: 'M' + R.X0 + ' ' + yR(fx.r).toFixed(1) + ' H' + R.X1, var: stepPath('rA'), base: stepPath('base'),
+      yTicks: yTicksR, xTicks: xTicksB.map(t => ({ left: t.left, txt: t.txt })),
+      legend: [
+        { name: 'Fixe', color: NAVY, w: '2.5', dash: 'none', val: this.pct(fx.r) },
+        { name: 'Variable, moyenne', color: TERRA, w: '2.5', dash: 'none', val: this.pct(varAvg) },
+        { name: 'Euribor projeté hors marge, moyenne', color: '#e9a47c', w: '1.75', dash: '4 4', val: this.pct(varAvg - m) }
+      ],
+      aria: 'Taux fixe ' + this.pct(fx.r) + ', taux variable moyen projeté ' + this.pct(varAvg),
+      note: st.lProj === 'flat' ? 'Hypothèse Euribor constant : le variable reste au niveau actuel sur toute la durée, sans tenir compte des hausses intégrées par le marché.' : 'Le variable suit les taux à terme implicites : la courbe intègre déjà les hausses anticipées. Sans surprise de taux, fixe et variable coûtent à peu près la même chose.'
+    };
+
+    // Intérêts par profil
+    const cmax = Math.max.apply(null, prof.map(pf => Math.max(pf.intF, pf.intV))) || 1;
+    const cChart = { rows: prof.map(pf => ({ name: pf.name, wal: 'DVM ' + yrs(pf.fx.wal) + ', fixe ' + this.pct(pf.fx.r), wf: (pf.intF / cmax * 78).toFixed(1) + '%', wv: (pf.intV / cmax * 78).toFixed(1) + '%', tf: money(pf.intF), tv: money(pf.intV), bg: pf.k === b.prof ? '#f4f1ea' : 'transparent', bl: pf.k === b.prof ? TERRA : 'transparent' })) };
+
+    // Sensibilité
+    const SH = [-100, -50, 0, 50, 100];
+    const sens = SH.map(s => ({ s: s, v: s === 0 ? intVar : sumI(this.loanVar(cv, b, st.lProj, s).rows) }));
+    const emax = Math.max(intFix, Math.max.apply(null, sens.map(x => x.v))) * 1.15;
+    const cheaper = sens.filter(x => x.v < intFix).map(x => x.s);
+    const eChart = {
+      bars: sens.map(x => ({ lab: x.s === 0 ? 'Base' : this.bp(x.s), h: (x.v / emax * 100).toFixed(1) + '%', val: money(x.v), bg: x.s === 0 ? TERRA : '#e9a47c' })),
+      refBottom: (intFix / emax * 100).toFixed(1) + '%',
+      note: 'Fixe : ' + money(intFix) + '. ' + (cheaper.length === 0 ? 'Dans aucun des cas testés le variable n\'est moins cher.' : cheaper.length === SH.length ? 'Le variable est moins cher dans tous les cas testés.' : 'Le variable est moins cher dans ces cas : ' + cheaper.map(s => (s === 0 ? 'sans choc' : this.bp(s))).join(', ') + '.')
+    };
+
+    // Tableau
+    const tbl = Yr.map(o => ({ y: String(o.y), c0: tv(o.crd0), it: tv(o.it), cap: tv(o.cap), pay: tv(o.pay), c1: tv(Math.max(0, o.crd1)), r: this.f2(o.rAvg) + ' %', fw: '400' }));
+    const ti = Yr.reduce((s, o) => s + o.it, 0);
+    tbl.push({ y: 'Total', c0: '', it: tv(ti), cap: tv(b.amt), pay: tv(ti + b.amt), c1: '', r: this.pct(avgRate(viewVar ? vr.rows : fx.rows)), fw: '700' });
+
+    // Contrôles
+    const ch = on => this.chip(on);
+    const curBtns = [['EUR', 'EUR'], ['XPF', 'XPF']].map(c => Object.assign({ label: c[1], on: cur === c[0], pick: () => this.setState({ lCur: c[0] }) }, ch(cur === c[0])));
+    const amt = cur === 'EUR'
+      ? { min: 1, max: 100, step: 0.5, value: st.lAmt, txt: money(b.amt), help: '≈ ' + (b.amt * FX).toLocaleString('fr-FR', { maximumFractionDigits: 0 }) + ' M XPF', onChange: e => this.setState({ lAmt: Number(e.target.value) }) }
+      : { min: 100, max: 12000, step: 50, value: Math.round(st.lAmt * FX / 50) * 50, txt: (Math.round(st.lAmt * FX / 50) * 50).toLocaleString('fr-FR') + ' M XPF', help: '≈ ' + b.amt.toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' M€ (parité fixe)', onChange: e => this.setState({ lAmt: Number(e.target.value) / FX }) };
+    const profBtns = PROF.map(pf => Object.assign({ label: pf[1], on: b.prof === pf[0], pick: () => this.setState({ lProf: pf[0], lHov: null }) }, ch(b.prof === pf[0])));
+    const gBtns = [0, 1, 2, 3].map(gv => Object.assign({ label: gv === 0 ? 'Aucun' : gv + ' an' + (gv > 1 ? 's' : ''), on: st.lGrace === gv, pick: () => this.setState({ lGrace: gv }) }, ch(st.lGrace === gv)));
+    const fBtns = [[12, 'Mensuelle'], [4, 'Trimestrielle'], [2, 'Semestrielle'], [1, 'Annuelle']].map(f => Object.assign({ label: f[1], on: b.freq === f[0], pick: () => this.setState({ lFreq: f[0] }) }, ch(b.freq === f[0])));
+    const pBtns = [['fwd', 'Taux à terme implicites'], ['flat', 'Euribor constant']].map(p => Object.assign({ label: p[1], on: st.lProj === p[0], pick: () => this.setState({ lProj: p[0] }) }, ch(st.lProj === p[0])));
+    const viewBtns = [['fix', 'Taux fixe'], ['var', 'Taux variable']].map(v => Object.assign({ label: v[1], on: st.lView === v[0], pick: () => this.setState({ lView: v[0] }) }, ch(st.lView === v[0])));
+    const shock = Object.assign({
+      on: !!st.lShock,
+      label: st.lShock ? 'Scénario du simulateur appliqué (retirer)' : 'Appliquer le scénario de choc du simulateur',
+      note: !st.lShock ? 'La courbe EUR est utilisée telle qu\'observée.' : shockSet ? 'Courbe EUR déformée par le choc réglé dans l\'onglet Simulateur (taux directeur ' + this.bp(st.P) + ', niveau ' + this.bp(st.L) + ', pente ' + this.bp(st.S) + ', courbure ' + this.bp(st.C) + ').' + (st.zone === 'usd' ? ' Zone réglée sur États-Unis : sans effet sur la courbe EUR.' : '') : 'Aucun choc n\'est réglé dans l\'onglet Simulateur : sans effet.',
+      toggle: () => this.setState({ lShock: !this.state.lShock })
+    }, ch(!!st.lShock));
+
+    return {
+      dateLong: d.long[i] + (useShock ? ', scénario de choc appliqué' : ''),
+      date: { value: i, txt: d.long[i], onChange: e => { this.stopPlay(); this.setState({ di: Number(e.target.value), playing: false }); } },
+      curBtns: curBtns, amt: amt,
+      years: { value: b.years, txt: b.years + ' an' + (b.years > 1 ? 's' : ''), onChange: e => this.setState({ lYears: Number(e.target.value), lHov: null }) },
+      marge: { value: b.marge, txt: b.marge + ' pb', onChange: e => this.setState({ lMarge: Number(e.target.value) }) },
+      fee: { value: st.lFee, txt: st.lFee + ' pb (' + money(b.amt * st.lFee / 10000) + ')', onChange: e => this.setState({ lFee: Number(e.target.value) }) },
+      profBtns: profBtns, gBtns: gBtns, fBtns: fBtns, pBtns: pBtns, viewBtns: viewBtns,
+      gOpacity: b.prof === 'inf' ? '0.5' : '1',
+      gNote: b.prof === 'inf' ? 'Sans objet pour un prêt in fine.' : 'Intérêts seuls pendant le différé.',
+      shock: shock, kpis: kpis, unit: unit,
+      a: a, b: bChart, dd: ddChart, c: cChart, e: eChart, tbl: tbl
+    };
+  }
+}
+</script>
+<script>
+DCRuntime.mount(Component, document.getElementById('app'), document.getElementById('tpl'));
+</script>
+</body>
+</html>

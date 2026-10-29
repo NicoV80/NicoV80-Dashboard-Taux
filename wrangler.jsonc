@@ -1,0 +1,9 @@
+{
+  // Site statique "Courbes des taux" servi par Cloudflare Workers (fichiers du dossier public/).
+  // Le nom doit être identique au nom du projet créé dans Cloudflare.
+  "name": "dashboard-taux",
+  "compatibility_date": "2025-09-01",
+  "assets": {
+    "directory": "./public"
+  }
+}
